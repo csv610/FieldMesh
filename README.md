@@ -95,5 +95,17 @@ The algorithm behind this toolkit, **Instant Field-Aligned Meshes**, reimagines 
 
 By decoupling the problem into field optimization and extraction, the algorithm can produce extremely high-quality results "instantly" compared to traditional remeshing techniques, while maintaining strict adherence to the underlying surface features and boundaries.
 
+### Comparison with Traditional Methods
+
+| Feature | Instant Meshes | Delaunay Meshes | Advancing Front |
+| :--- | :--- | :--- | :--- |
+| **Logic** | Global Field Optimization | Geometric Constraint | Greedy Heuristic |
+| **Topology** | Native Quad/Tri Support | Triangle-based | Procedural |
+| **Parallelism** | Highly Parallelizable | Moderate | Difficult |
+| **Robustness** | High (Field Smoothing) | Sensitive to Noise | Front Collisions |
+
+- **vs. Delaunay**: Unlike Delaunay methods that rely on local geometric properties (empty circumcircle), Instant Meshes is **field-driven**. This allows it to generate high-quality quads natively by simply changing the field symmetry.
+- **vs. Advancing Front**: Traditional advancing front methods are "greedy" and often struggle where multiple fronts meet. Instant Meshes solves for the entire mesh structure **globally**, eliminating meeting-point artifacts and significantly improving performance through parallelism.
+
 ## License
 The core implementation is based on the original work by Wenzel Jakob et al. and is licensed under the BSD license.
