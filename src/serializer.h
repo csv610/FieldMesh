@@ -36,7 +36,7 @@ public:
 
     bool diff(const Serializer &serializer) const;
 
-    inline size_t totalSize() const;
+    size_t totalSize() const;
 
     std::vector<std::string> getKeys() const;
 

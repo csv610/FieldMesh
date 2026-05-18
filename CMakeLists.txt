@@ -1,4 +1,13 @@
 cmake_minimum_required(VERSION 3.12)
+
+# Silence CMake policy warnings from dependencies
+if (POLICY CMP0048)
+  cmake_policy(SET CMP0048 NEW)
+endif()
+if (POLICY CMP0175)
+  cmake_policy(SET CMP0175 NEW)
+endif()
+
 project(InstantMeshes)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -14,30 +23,6 @@ endif()
 
 # Options
 option(INSTANT_MESHES_DEV_MODE "Instant meshes developer mode" OFF)
-
-# Submodule check
-if(NOT IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/external/nanogui/external/glfw")
-  message(FATAL_ERROR "The Instant Meshes dependency repositories (NanoGUI, GLFW, etc.) are missing! "
-    "You probably did not clone the project with --recursive. It is possible to recover "
-    "by calling \"git submodule update --init --recursive\"")
-endif()
-
-# IDE Folders
-if(CMAKE_GENERATOR MATCHES "Visual Studio")
-  set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-endif()
-
-# Platform-specific compiler settings
-if(MSVC)
-  add_compile_definitions("_CRT_SECURE_NO_WARNINGS" "__TBB_NO_IMPLICIT_LINKAGE")
-  add_compile_options("/MP")
-  if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
-    add_compile_options("/arch:SSE2")
-    add_compile_definitions("EIGEN_DONT_ALIGN")
-  endif()
-  # Static runtime for MSVC
-  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-endif()
 
 # Silence OpenGL deprecation warnings on macOS
 if(APPLE)
@@ -58,7 +43,65 @@ else()
     get_target_property(EIGEN3_INC Eigen3::Eigen INTERFACE_INCLUDE_DIRECTORIES)
     set(NANOGUI_EIGEN_INCLUDE_DIR ${EIGEN3_INC} CACHE STRING " " FORCE)
 endif()
-add_subdirectory(external/nanogui ext_build/nanogui)
+
+include(FetchContent)
+FetchContent_Declare(
+  nanogui
+  GIT_REPOSITORY https://github.com/wjakob/nanogui.git
+  GIT_TAG        master
+  GIT_SUBMODULES_RECURSE YES
+)
+
+FetchContent_Declare(
+  pss
+  GIT_REPOSITORY https://github.com/wjakob/pss.git
+  GIT_TAG        master
+)
+
+FetchContent_Declare(
+  pcg32
+  GIT_REPOSITORY https://github.com/wjakob/pcg32.git
+  GIT_TAG        master
+)
+
+FetchContent_Declare(
+  dset
+  GIT_REPOSITORY https://github.com/wjakob/dset.git
+  GIT_TAG        master
+)
+
+FetchContent_MakeAvailable(nanogui pss pcg32 dset)
+
+# Suppress warnings in third-party targets
+if (NOT MSVC)
+  if (TARGET glfw)
+    target_compile_options(glfw PRIVATE -Wno-objc-multiple-method-names -Wno-deprecated-declarations)
+  endif()
+  if (TARGET nanogui-obj)
+    target_compile_options(nanogui-obj PRIVATE -Wno-deprecated-declarations)
+  endif()
+  if (TARGET nanogui)
+    target_compile_options(nanogui PRIVATE -Wno-deprecated-declarations)
+  endif()
+endif()
+
+# IDE Folders
+if(CMAKE_GENERATOR MATCHES "Visual Studio")
+  set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+endif()
+
+# Platform-specific compiler settings
+if(MSVC)
+  add_compile_definitions("_CRT_SECURE_NO_WARNINGS" "__TBB_NO_IMPLICIT_LINKAGE")
+  add_compile_options("/MP")
+  if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
+    add_compile_options("/arch:SSE2")
+    add_compile_definitions("EIGEN_DONT_ALIGN")
+  endif()
+  # Static runtime for MSVC
+  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
+
 set_property(TARGET nanogui glfw PROPERTY FOLDER "dependencies")
 
 # Resource generation
@@ -83,7 +126,7 @@ add_custom_command(
           -DOUTPUT_C=resources.cpp
           -DOUTPUT_H=resources.h
           "-DINPUT_FILES=${IM_RESOURCES_COMMAS}"
-          -P "${CMAKE_CURRENT_SOURCE_DIR}/external/nanogui/resources/bin2c.cmake"
+          -P "${nanogui_SOURCE_DIR}/resources/bin2c.cmake"
   DEPENDS ${IM_RESOURCES}
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMENT "Running bin2c"
@@ -97,13 +140,17 @@ if (INSTANT_MESHES_BUILD_PYTHON)
   FetchContent_Declare(
     nanobind
     GIT_REPOSITORY https://github.com/wjakob/nanobind.git
-    GIT_TAG        master
+    GIT_TAG        v1.9.2
   )
   FetchContent_MakeAvailable(nanobind)
 
   nanobind_add_module(instant_meshes_python python/bindings.cpp)
   target_link_libraries(instant_meshes_python PRIVATE imesh_core)
-  target_include_directories(instant_meshes_python PRIVATE src external)
+  target_include_directories(instant_meshes_python SYSTEM PRIVATE src external)
+  target_include_directories(instant_meshes_python SYSTEM PRIVATE
+    ${nanobind_SOURCE_DIR}/include
+    ${Python_INCLUDE_DIRS}
+  )
 endif()
 
 # Executable sources
@@ -129,14 +176,16 @@ set(CORE_SOURCES
 )
 
 add_library(imesh_core STATIC ${CORE_SOURCES})
-target_include_directories(imesh_core PUBLIC
-  external/nanogui/include
+target_include_directories(imesh_core SYSTEM PUBLIC
+  ${nanogui_SOURCE_DIR}/include
   ${NANOGUI_EXTRA_INCS}
   ${EIGEN3_INCLUDE_DIR}
   ${TBB_INCLUDE_DIRS}
-  external/dset
-  external/pss
-  external/pcg32
+)
+target_include_directories(imesh_core PUBLIC
+  ${dset_SOURCE_DIR}
+  ${pss_SOURCE_DIR}
+  ${pcg32_SOURCE_DIR}
   external/rply
   external/half
   ${CMAKE_CURRENT_BINARY_DIR}
