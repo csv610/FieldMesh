@@ -101,11 +101,12 @@ By decoupling the problem into field optimization and extraction, the algorithm 
 | :--- | :--- | :--- | :--- |
 | **Logic** | Global Field Optimization | Geometric Constraint | Greedy Heuristic |
 | **Topology** | Native Quad/Tri Support | Triangle-based | Procedural |
+| **Feature Alignment** | Field-constrained (Global) | Edge-constrained (CDT) | Front-initiated (Direct) |
 | **Parallelism** | Highly Parallelizable | Moderate | Difficult |
 | **Robustness** | High (Field Smoothing) | Sensitive to Noise | Front Collisions |
 
-- **vs. Delaunay**: Unlike Delaunay methods that rely on local geometric properties (empty circumcircle), Instant Meshes is **field-driven**. This allows it to generate high-quality quads natively by simply changing the field symmetry.
-- **vs. Advancing Front**: Traditional advancing front methods are "greedy" and often struggle where multiple fronts meet. Instant Meshes solves for the entire mesh structure **globally**, eliminating meeting-point artifacts and significantly improving performance through parallelism.
+- **vs. Delaunay**: Unlike Delaunay methods that rely on local geometric properties (empty circumcircle), Instant Meshes is **field-driven**. For feature alignment, it treats sharp edges as global constraints in the field optimization, whereas Delaunay (CDT) must explicitly force edge existence, often at the cost of local mesh quality.
+- **vs. Advancing Front**: Traditional advancing front methods are "greedy" and often struggle where multiple fronts meet. While Advancing Front is excellent at strictly following a feature front, Instant Meshes achieves superior global regularity by allowing the entire mesh to "flow" along features via its optimized orientation field.
 
 ## License
 The core implementation is based on the original work by Wenzel Jakob et al. and is licensed under the BSD license.
