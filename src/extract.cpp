@@ -62,7 +62,7 @@ extract_graph(const MultiResolutionHierarchy &mRes, bool extrinsic, int rosy, in
                 while (!dset.try_lock(i))
                     ;
 
-                for (Link *link = adj[i]; link != adj[i+1]; ++link) {
+                for (const Link *link = adj[i]; link != adj[i+1]; ++link) {
                     uint32_t j = link->id;
 
                     if (j < i)
@@ -697,11 +697,9 @@ void extract_faces(std::vector<std::vector<TaggedLink> > &adj, MatrixXf &O,
             }
         }
 
-        uint32_t linksLeft = 0;
         for (uint32_t i=0; i<nV_old; ++i) {
             adj[i].erase(std::remove_if(adj[i].begin(), adj[i].end(),
                 [](const TaggedLink &l) { return (l.flag & 2) == 0; }), adj[i].end());
-            linksLeft += adj[i].size();
         }
 
         for (uint32_t i=0; i<nV_old; ++i) {
@@ -930,7 +928,7 @@ void extract_faces(std::vector<std::vector<TaggedLink> > &adj, MatrixXf &O,
                             Matrix3f cov = Matrix3f::Zero();
                             for (auto j : adj_new[i])
                                 cov += (O.col(j)-centroid) * (O.col(j)-centroid).transpose();
-                            Vector3f n = cov.jacobiSvd(Eigen::ComputeFullU).matrixU().col(2).normalized();
+                            Vector3f n = cov.jacobiSvd<Eigen::ComputeFullU>().matrixU().col(2).normalized();
                             n *= signum(avgNormal.dot(n));
 
                             if (bvh && bvh->F()->size() > 0) {
@@ -973,7 +971,7 @@ void extract_faces(std::vector<std::vector<TaggedLink> > &adj, MatrixXf &O,
             uint32_t k = F(j, i);
             cov += (O.col(k)-centroid) * (O.col(k)-centroid).transpose();
         }
-        Vector3f n = cov.jacobiSvd(Eigen::ComputeFullU).matrixU().col(2).normalized();
+        Vector3f n = cov.jacobiSvd<Eigen::ComputeFullU>().matrixU().col(2).normalized();
         Nf.col(i) = n * signum(avgNormal.dot(n));
     }
 
@@ -991,7 +989,7 @@ void extract_faces(std::vector<std::vector<TaggedLink> > &adj, MatrixXf &O,
                 uint32_t k = F(0, f[i]);
                 cov += (O.col(k)-centroid) * (O.col(k)-centroid).transpose();
             }
-            Vector3f n = cov.jacobiSvd(Eigen::ComputeFullU).matrixU().col(2).normalized();
+            Vector3f n = cov.jacobiSvd<Eigen::ComputeFullU>().matrixU().col(2).normalized();
             n *= signum(avgNormal.dot(n));
             for (uint32_t i=0; i<f.size(); ++i)
                 Nf.col(f[i]) = n;

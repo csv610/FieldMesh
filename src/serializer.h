@@ -50,41 +50,57 @@ public:
 
     #define IMPLEMENT(type, btype) \
         void set(const std::string &key, type value) { \
+            auto it = mData.find(mPrefixStack.top() + key); \
+            if (it != mData.end()) mData.erase(it); \
             Eigen::Matrix<btype, Eigen::Dynamic, Eigen::Dynamic> *mat = new Eigen::Matrix<btype, Eigen::Dynamic, Eigen::Dynamic>(1, 1); \
             (*mat)(0, 0) = (btype) value; \
             mData.emplace(mPrefixStack.top() + key, mat); \
         } \
         void set(const std::string &key, const Eigen::Matrix<type, 2, 1> &v) { \
+            auto it = mData.find(mPrefixStack.top() + key); \
+            if (it != mData.end()) mData.erase(it); \
             mData.emplace(mPrefixStack.top() + key, \
                 new Eigen::Matrix<btype, Eigen::Dynamic, Eigen::Dynamic>(v.cast<btype>())); \
         } \
         \
         void set(const std::string &key, const Eigen::Matrix<type, 3, 1> &v) { \
+            auto it = mData.find(mPrefixStack.top() + key); \
+            if (it != mData.end()) mData.erase(it); \
             mData.emplace(mPrefixStack.top() + key, \
                 new Eigen::Matrix<btype, Eigen::Dynamic, Eigen::Dynamic>(v.cast<btype>())); \
         } \
         \
         void set(const std::string &key, const Eigen::Matrix<type, 4, 1> &v) { \
+            auto it = mData.find(mPrefixStack.top() + key); \
+            if (it != mData.end()) mData.erase(it); \
             mData.emplace(mPrefixStack.top() + key, \
                 new Eigen::Matrix<btype, Eigen::Dynamic, Eigen::Dynamic>(v.cast<btype>())); \
         } \
         \
         void set(const std::string &key, const Eigen::Matrix<type, 1, Eigen::Dynamic> &v) { \
+            auto it = mData.find(mPrefixStack.top() + key); \
+            if (it != mData.end()) mData.erase(it); \
             mData.emplace(mPrefixStack.top() + key, \
                 new Eigen::Matrix<btype, Eigen::Dynamic, Eigen::Dynamic>(v.cast<btype>())); \
         } \
         \
         void set(const std::string &key, const Eigen::Matrix<type, Eigen::Dynamic, 1> &v) { \
+            auto it = mData.find(mPrefixStack.top() + key); \
+            if (it != mData.end()) mData.erase(it); \
             mData.emplace(mPrefixStack.top() + key, \
                 new Eigen::Matrix<btype, Eigen::Dynamic, Eigen::Dynamic>(v.cast<btype>().transpose())); \
         } \
         \
         void set(const std::string &key, const Eigen::Matrix<type, Eigen::Dynamic, Eigen::Dynamic> &m) { \
+            auto it = mData.find(mPrefixStack.top() + key); \
+            if (it != mData.end()) mData.erase(it); \
             mData.emplace(mPrefixStack.top() + key, \
                 new Eigen::Matrix<btype, Eigen::Dynamic, Eigen::Dynamic>(m.cast<btype>())); \
         } \
         \
         void set(const std::string &key, const std::vector<std::vector<type>> &v) { \
+            auto it = mData.find(mPrefixStack.top() + key); \
+            if (it != mData.end()) mData.erase(it); \
             mData.emplace(mPrefixStack.top() + key, new std::vector<std::vector<btype>>( \
                         reinterpret_cast<const std::vector<std::vector<btype>>&>(v))); \
         } \

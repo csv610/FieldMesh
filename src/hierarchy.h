@@ -19,7 +19,7 @@
 class Serializer;
 
 extern AdjacencyMatrix
-downsample_graph(const AdjacencyMatrix adj, const MatrixXf &V,
+downsample_graph(const AdjacencyMatrix &adj, const MatrixXf &V,
                  const MatrixXf &N, const VectorXf &areas, MatrixXf &V_p,
                  MatrixXf &V_n, VectorXf &areas_p, MatrixXu &to_upper,
                  VectorXu &to_lower, bool deterministic = false,
@@ -29,7 +29,6 @@ struct MultiResolutionHierarchy {
     enum { MAX_DEPTH = 25 };
 public:
     MultiResolutionHierarchy();
-    void free();
     void save(Serializer &state);
     void load(const Serializer &state);
 
@@ -40,6 +39,7 @@ public:
 
     void printStatistics() const;
     void resetSolution();
+    void clear();
 
     inline ordered_lock &mutex() { return mMutex; }
 

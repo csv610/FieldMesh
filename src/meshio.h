@@ -23,6 +23,12 @@ load_mesh_or_pointcloud(const std::string &filename, MatrixXu &F,
 extern void load_obj(const std::string &filename, MatrixXu &F, MatrixXf &V,
                      const ProgressCallback &progress = ProgressCallback());
 
+extern void load_off(const std::string &filename, MatrixXu &F, MatrixXf &V,
+                     const ProgressCallback &progress = ProgressCallback());
+
+extern void load_stl(const std::string &filename, MatrixXu &F, MatrixXf &V,
+                     const ProgressCallback &progress = ProgressCallback());
+
 extern void load_ply(const std::string &filename, MatrixXu &F, MatrixXf &V,
                      MatrixXf &N, bool pointcloud = false,
                      const ProgressCallback &progress = ProgressCallback());
@@ -53,4 +59,12 @@ extern void write_ply(const std::string &filename, const MatrixXu &F,
                       const MatrixXf &Nf = MatrixXf(),
                       const MatrixXf &UV = MatrixXf(),
                       const MatrixXf &C = MatrixXf(),
+                      const ProgressCallback &progress = ProgressCallback());
+
+extern void write_off(const std::string &filename, const MatrixXu &F,
+                      const MatrixXf &V,
+                      const ProgressCallback &progress = ProgressCallback());
+
+extern void write_stl(const std::string &filename, const MatrixXu &F,
+                      const MatrixXf &V,
                       const ProgressCallback &progress = ProgressCallback());

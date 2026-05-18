@@ -14,6 +14,7 @@
 */
 
 #include "field.h"
+#include <tbb/global_control.h>
 #include "serializer.h"
 
 static const Float sqrt_3_over_4 = 0.866025403784439f;
@@ -639,7 +640,7 @@ optimize_orientations_impl(MultiResolutionHierarchy &mRes, int level,
             const Vector3f n_i = N.col(i);
             Float weight_sum = 0.0f;
             Vector3f sum = Q.col(i);
-            for (Link *link = adj[i]; link != adj[i+1]; ++link) {
+            for (const Link *link = adj[i]; link != adj[i+1]; ++link) {
                 const uint32_t j = link->id;
                 const Float weight = link->weight;
                 if (weight == 0)
@@ -681,7 +682,7 @@ optimize_orientations_impl(MultiResolutionHierarchy &mRes, int level,
             Float weight_sum = 0.0f;
             Vector3f sum = Vector3f::Zero();
 
-            for (Link *link = adj[i]; link != adj[i+1]; ++link) {
+            for (const Link *link = adj[i]; link != adj[i+1]; ++link) {
                 const uint32_t j = link->id;
                 const Float weight = link->weight;
                 if (weight == 0)
@@ -728,7 +729,7 @@ static inline Float error_orientations_impl(const MultiResolutionHierarchy &mRes
     auto map = [&](const tbb::blocked_range<uint32_t> &range, Float error) -> Float {
         for (uint32_t i = range.begin(); i<range.end(); ++i) {
             Vector3f q_i = Q.col(i).normalized(), n_i = N.col(i);
-            for (Link *link = adj[i]; link != adj[i+1]; ++link) {
+            for (const Link *link = adj[i]; link != adj[i+1]; ++link) {
                 const uint32_t j = link->id;
                 Vector3f q_j = Q.col(j).normalized(), n_j = N.col(j);
                 std::pair<Vector3f, Vector3f> value =
@@ -799,7 +800,7 @@ template <typename Functor>
 static inline void
 freeze_ivars_orientations_impl(MultiResolutionHierarchy &mRes, int level,
                               Functor functor) {
-    const AdjacencyMatrix &adj = mRes.adj(level);
+    AdjacencyMatrix &adj = mRes.adj(level);
     const MatrixXf &N = mRes.N(level);
     const MatrixXf &Q = mRes.Q(level);
 
@@ -920,7 +921,7 @@ template <typename CompatFunctor, typename RoundFunctor> static inline Float opt
                 q_i.normalize();
             #endif
 
-            for (Link *link = adj[i]; link != adj[i+1]; ++link) {
+            for (const Link *link = adj[i]; link != adj[i+1]; ++link) {
                 const uint32_t j = link->id;
                 const Float weight = link->weight;
                 if (weight == 0)
@@ -972,7 +973,7 @@ template <typename CompatFunctor, typename RoundFunctor> static inline Float opt
             #endif
             const Vector3f t_i = n_i.cross(q_i);
 
-            for (Link *link = adj[i]; link != adj[i+1]; ++link) {
+            for (const Link *link = adj[i]; link != adj[i+1]; ++link) {
                 const uint32_t j = link->id;
                 const Float weight = link->weight;
                 if (weight == 0)
@@ -1031,7 +1032,7 @@ static inline Float error_positions_impl(const MultiResolutionHierarchy &mRes,
             #if 1
                 q_i.normalize();
             #endif
-            for (Link *link = adj[i]; link != adj[i+1]; ++link) {
+            for (const Link *link = adj[i]; link != adj[i+1]; ++link) {
                 const uint32_t j = link->id;
                 const Vector3f &n_j = N.col(j), &v_j = V.col(j), &o_j = O.col(j);
                 Vector3f q_j = Q.col(j);
@@ -1166,11 +1167,11 @@ void compute_position_singularities(
 }
 
 template <typename Functor>
-static inline void freeze_ivars_positions_impl(MultiResolutionHierarchy &mRes,
+static inline void freeze_ivars_positions_impl(MultiResolutionHierarchy &mres,
                                                int level, Functor functor) {
-    const AdjacencyMatrix &adj = mRes.adj(level);
-    const MatrixXf &N = mRes.N(level), &Q = mRes.Q(level), &V = mRes.V(level), &O = mRes.O(level);
-    const Float scale = mRes.scale(), inv_scale = 1.0f / scale;
+    AdjacencyMatrix &adj = mres.adj(level);
+    const MatrixXf &N = mres.N(level), &Q = mres.Q(level), &V = mres.V(level), &O = mres.O(level);
+    const Float scale = mres.scale(), inv_scale = 1.0f / scale;
 
     auto map = [&](const tbb::blocked_range<uint32_t> &range) {
         for (uint32_t i = range.begin(); i<range.end(); ++i) {
@@ -1203,9 +1204,9 @@ static inline void freeze_ivars_positions_impl(MultiResolutionHierarchy &mRes,
     };
 
     tbb::parallel_for(
-        tbb::blocked_range<uint32_t>(0, mRes.size(level), GRAIN_SIZE), map);
+        tbb::blocked_range<uint32_t>(0, mres.size(level), GRAIN_SIZE), map);
 
-    mRes.setFrozenO(true);
+    mres.setFrozenO(true);
 }
 
 void freeze_ivars_positions(MultiResolutionHierarchy &mRes, int level,
@@ -1539,7 +1540,8 @@ extern int nprocs;
 void Optimizer::run() {
     const int levelIterations = 6;
     uint32_t operations = 0;
-    tbb::task_scheduler_init init(nprocs);
+    tbb::global_control control(tbb::global_control::max_allowed_parallelism,
+                                nprocs == -1 ? std::thread::hardware_concurrency() : nprocs);
 
     auto progress = [&](uint32_t ops) {
         operations += ops;

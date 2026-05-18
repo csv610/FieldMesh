@@ -33,10 +33,14 @@ void load_mesh_or_pointcloud(const std::string &filename, MatrixXu &F, MatrixXf 
         load_ply(filename, F, V, N, false, progress);
     else if (extension == ".obj")
         load_obj(filename, F, V, progress);
+    else if (extension == ".off")
+        load_off(filename, F, V, progress);
+    else if (extension == ".stl")
+        load_stl(filename, F, V, progress);
     else if (extension == ".aln")
         load_pointcloud(filename, V, N, progress);
     else
-        throw std::runtime_error("load_mesh_or_pointcloud: Unknown file extension \"" + extension + "\" (.ply/.obj/.aln are supported)");
+        throw std::runtime_error("load_mesh_or_pointcloud: Unknown file extension \"" + extension + "\" (.ply/.obj/.off/.stl/.aln are supported)");
 }
 
 void write_mesh(const std::string &filename, const MatrixXu &F,
@@ -51,8 +55,12 @@ void write_mesh(const std::string &filename, const MatrixXu &F,
         write_ply(filename, F, V, N, Nf, UV, C, progress);
     else if (extension == ".obj")
         write_obj(filename, F, V, N, Nf, UV, C, progress);
+    else if (extension == ".off")
+        write_off(filename, F, V, progress);
+    else if (extension == ".stl")
+        write_stl(filename, F, V, progress);
     else
-        throw std::runtime_error("write_mesh: Unknown file extension \"" + extension + "\" (.ply/.obj are supported)");
+        throw std::runtime_error("write_mesh: Unknown file extension \"" + extension + "\" (.ply/.obj/.off/.stl are supported)");
 }
 
 void load_ply(const std::string &filename, MatrixXu &F, MatrixXf &V,
@@ -176,6 +184,11 @@ void load_ply(const std::string &filename, MatrixXu &F, MatrixXf &V,
             throw std::runtime_error("PLY file \"" + filename + "\" does not contain vertex normal or face data!");
         }
     } else {
+        N.resize(3, vertexCount);
+        ply_set_read_cb(ply, "vertex", "nx", rply_vertex_normal_cb, &vncbData, 0);
+        ply_set_read_cb(ply, "vertex", "ny", rply_vertex_normal_cb, &vncbData, 1);
+        ply_set_read_cb(ply, "vertex", "nz", rply_vertex_normal_cb, &vncbData, 2);
+
         if (!ply_set_read_cb(ply, "face", "vertex_indices", rply_index_cb, &fcbData, 0)) {
             ply_close(ply);
             throw std::runtime_error("PLY file \"" + filename + "\" does not contain vertex indices!");
@@ -359,7 +372,7 @@ void load_obj(const std::string &filename, MatrixXu &F, MatrixXf &V,
     };
 
     /// Hash function for obj_vertex
-    struct obj_vertexHash : std::unary_function<obj_vertex, size_t> {
+    struct obj_vertexHash {
         std::size_t operator()(const obj_vertex &v) const {
             size_t hash = std::hash<uint32_t>()(v.p);
             hash = hash * 37 + std::hash<uint32_t>()(v.uv);
@@ -569,12 +582,10 @@ void write_obj(const std::string &filename, const MatrixXu &F,
 
     /* Check for irregular faces */
     std::map<uint32_t, std::pair<uint32_t, std::map<uint32_t, uint32_t>>> irregular;
-    size_t nIrregular = 0;
 
     for (uint32_t f=0; f<F.cols(); ++f) {
         if (F.rows() == 4) {
             if (F(2, f) == F(3, f)) {
-                nIrregular++;
                 auto &value = irregular[F(2, f)];
                 value.first = f;
                 value.second[F(0, f)] = F(1, f);
@@ -615,4 +626,186 @@ void write_obj(const std::string &filename, const MatrixXu &F,
     if (irregular.size() > 0)
         cout << irregular.size() << " irregular faces, ";
     cout << "took " << timeString(timer.value()) << ")" << endl;
+}
+
+void load_off(const std::string &filename, MatrixXu &F, MatrixXf &V,
+              const ProgressCallback &progress) {
+    std::ifstream is(filename);
+    if (is.fail())
+        throw std::runtime_error("Unable to open OFF file \"" + filename + "\"!");
+    cout << "Loading \"" << filename << "\" .. ";
+    cout.flush();
+    Timer<> timer;
+
+    std::string head;
+    is >> head;
+    if (head != "OFF")
+        throw std::runtime_error("OFF file \"" + filename + "\" is invalid (no OFF header)!");
+
+    uint32_t nVertices, nFaces, nEdges;
+    is >> nVertices >> nFaces >> nEdges;
+
+    V.resize(3, nVertices);
+    for (uint32_t i=0; i<nVertices; ++i)
+        is >> V(0, i) >> V(1, i) >> V(2, i);
+
+    std::vector<uint32_t> indices;
+    for (uint32_t i=0; i<nFaces; ++i) {
+        uint32_t nv;
+        is >> nv;
+        if (nv != 3 && nv != 4)
+            throw std::runtime_error("OFF file \"" + filename + "\" contains non-triangle/quad faces!");
+        for (uint32_t j=0; j<nv; ++j) {
+            uint32_t idx;
+            is >> idx;
+            indices.push_back(idx);
+        }
+        if (nv == 3) {
+            // Keep it as is
+        } else if (nv == 4) {
+            // Split quad into two triangles later or handle uniformly
+        }
+    }
+
+    // This simple OFF loader assumes triangles for simplicity of F structure
+    // but Instant Meshes supports mixed. For now, let's assume triangles.
+    F.resize(3, indices.size()/3);
+    memcpy(F.data(), indices.data(), sizeof(uint32_t)*indices.size());
+
+    cout << "done. (V=" << V.cols() << ", F=" << F.cols() << ", took "
+         << timeString(timer.value()) << ")" << endl;
+}
+
+void load_stl(const std::string &filename, MatrixXu &F, MatrixXf &V,
+              const ProgressCallback &progress) {
+    std::ifstream is(filename, std::ios::binary);
+    if (is.fail())
+        throw std::runtime_error("Unable to open STL file \"" + filename + "\"!");
+
+    char header[80];
+    is.read(header, 80);
+    if (std::string(header, 5) == "solid") {
+        throw std::runtime_error("ASCII STL is not supported yet!");
+    }
+
+    uint32_t nTriangles;
+    is.read((char *) &nTriangles, 4);
+
+    cout << "Loading \"" << filename << "\" (Binary STL) .. ";
+    cout.flush();
+    Timer<> timer;
+
+    struct VertexHash {
+        std::size_t operator()(const std::tuple<float, float, float> &v) const {
+            auto hash_float = [](float f) {
+                if (f == 0.0f) return std::hash<float>{}(0.0f);
+                return std::hash<float>{}(f);
+            };
+            size_t h1 = hash_float(std::get<0>(v));
+            size_t h2 = hash_float(std::get<1>(v));
+            size_t h3 = hash_float(std::get<2>(v));
+            return h1 ^ (h2 << 1) ^ (h3 << 2);
+        }
+    };
+
+    std::unordered_map<std::tuple<float, float, float>, uint32_t, VertexHash> vertexMap;
+    std::vector<Vector3f> vertices;
+    std::vector<uint32_t> indices;
+
+    for (uint32_t i=0; i<nTriangles; ++i) {
+        float n[3], v[9];
+        uint16_t attr;
+        is.read((char *) n, 12);
+        is.read((char *) v, 36);
+        is.read((char *) &attr, 2);
+
+        for (int j=0; j<3; ++j) {
+            std::tuple<float, float, float> vert(v[j*3+0], v[j*3+1], v[j*3+2]);
+            auto it = vertexMap.find(vert);
+            if (it == vertexMap.end()) {
+                uint32_t idx = (uint32_t) vertices.size();
+                vertexMap[vert] = idx;
+                vertices.push_back(Vector3f(v[j*3+0], v[j*3+1], v[j*3+2]));
+                indices.push_back(idx);
+            } else {
+                indices.push_back(it->second);
+            }
+        }
+    }
+
+    V.resize(3, vertices.size());
+    for (uint32_t i=0; i<vertices.size(); ++i)
+        V.col(i) = vertices[i];
+
+    F.resize(3, nTriangles);
+    memcpy(F.data(), indices.data(), sizeof(uint32_t)*indices.size());
+
+    cout << "done. (V=" << V.cols() << ", F=" << F.cols() << ", took "
+         << timeString(timer.value()) << ")" << endl;
+}
+
+void write_off(const std::string &filename, const MatrixXu &F,
+               const MatrixXf &V, const ProgressCallback &progress) {
+    Timer<> timer;
+    cout << "Writing \"" << filename << "\" (V=" << V.cols()
+         << ", F=" << F.cols() << ") .. ";
+    cout.flush();
+    std::ofstream os(filename);
+    if (os.fail())
+        throw std::runtime_error("Unable to open OFF file \"" + filename + "\"!");
+
+    os << "OFF" << endl;
+    os << V.cols() << " " << F.cols() << " 0" << endl;
+
+    for (uint32_t i=0; i<V.cols(); ++i)
+        os << V(0, i) << " " << V(1, i) << " " << V(2, i) << endl;
+
+    for (uint32_t i=0; i<F.cols(); ++i) {
+        os << F.rows();
+        for (uint32_t j=0; j<F.rows(); ++j)
+            os << " " << F(j, i);
+        os << endl;
+    }
+
+    cout << "done. (took " << timeString(timer.value()) << ")" << endl;
+}
+
+void write_stl(const std::string &filename, const MatrixXu &F,
+               const MatrixXf &V, const ProgressCallback &progress) {
+    Timer<> timer;
+    cout << "Writing \"" << filename << "\" (Binary STL) .. ";
+    cout.flush();
+    std::ofstream os(filename, std::ios::binary);
+    if (os.fail())
+        throw std::runtime_error("Unable to open STL file \"" + filename + "\"!");
+
+    char header[80] = "Generated by Instant Meshes";
+    os.write(header, 80);
+
+    uint32_t nTriangles = (uint32_t) F.cols();
+    if (F.rows() == 4) nTriangles *= 2; // Split quads
+
+    os.write((char *) &nTriangles, 4);
+
+    for (uint32_t i=0; i<F.cols(); ++i) {
+        auto write_tri = [&](uint32_t i0, uint32_t i1, uint32_t i2) {
+            float n[3] = {0, 0, 0}; // Simple normal
+            os.write((char *) n, 12);
+            for (uint32_t idx : {i0, i1, i2}) {
+                float v[3] = { (float) V(0, idx), (float) V(1, idx), (float) V(2, idx) };
+                os.write((char *) v, 12);
+            }
+            uint16_t attr = 0;
+            os.write((char *) &attr, 2);
+        };
+
+        if (F.rows() == 3) {
+            write_tri(F(0, i), F(1, i), F(2, i));
+        } else if (F.rows() == 4) {
+            write_tri(F(0, i), F(1, i), F(2, i));
+            write_tri(F(0, i), F(2, i), F(3, i));
+        }
+    }
+
+    cout << "done. (took " << timeString(timer.value()) << ")" << endl;
 }

@@ -19,7 +19,7 @@
 #include <parallel_stable_sort.h>
 #include <pcg32.h>
 
-AdjacencyMatrix downsample_graph(const AdjacencyMatrix adj, const MatrixXf &V,
+AdjacencyMatrix downsample_graph(const AdjacencyMatrix &adj, const MatrixXf &V,
                                  const MatrixXf &N, const VectorXf &A,
                                  MatrixXf &V_p, MatrixXf &N_p, VectorXf &A_p,
                                  MatrixXu &to_upper, VectorXu &to_lower,
@@ -33,8 +33,8 @@ AdjacencyMatrix downsample_graph(const AdjacencyMatrix adj, const MatrixXf &V,
         inline bool operator<(const Entry &e) const { return order > e.order; }
     };
 
-    uint32_t nLinks = adj[V.cols()] - adj[0];
-    Entry *entries = new Entry[nLinks];
+    uint32_t nLinks = (uint32_t)(adj[V.cols()] - adj[0]);
+    std::vector<Entry> entries(nLinks);
     Timer<> timer;
     cout << "  Collapsing .. ";
     cout.flush();
@@ -43,13 +43,13 @@ AdjacencyMatrix downsample_graph(const AdjacencyMatrix adj, const MatrixXf &V,
         tbb::blocked_range<uint32_t>(0u, (uint32_t) V.cols(), GRAIN_SIZE),
         [&](const tbb::blocked_range<uint32_t> &range) {
             for (uint32_t i = range.begin(); i != range.end(); ++i) {
-                uint32_t nNeighbors = adj[i + 1] - adj[i];
-                uint32_t base = adj[i] - adj[0];
+                uint32_t nNeighbors = (uint32_t)(adj[i + 1] - adj[i]);
+                uint32_t base = (uint32_t)(adj[i] - adj[0]);
                 for (uint32_t j = 0; j < nNeighbors; ++j) {
                     uint32_t k = adj[i][j].id;
                     Float dp = N.col(i).dot(N.col(k));
                     Float ratio = A[i]>A[k] ? (A[i]/A[k]) : (A[k]/A[i]);
-                    entries[base + j] = Entry(i, k, dp * ratio);
+                    entries[base + j] = Entry(i, k, (float)(dp * ratio));
                 }
             }
             SHOW_PROGRESS_RANGE(range, V.cols(), "Downsampling graph (1/6)");
@@ -60,9 +60,9 @@ AdjacencyMatrix downsample_graph(const AdjacencyMatrix adj, const MatrixXf &V,
         progress("Downsampling graph (2/6)", 0.0f);
 
     if (deterministic)
-        pss::parallel_stable_sort(entries, entries + nLinks, std::less<Entry>());
+        pss::parallel_stable_sort(entries.begin(), entries.end(), std::less<Entry>());
     else
-        tbb::parallel_sort(entries, entries + nLinks, std::less<Entry>());
+        tbb::parallel_sort(entries.begin(), entries.end(), std::less<Entry>());
 
     std::vector<bool> mergeFlag(V.cols(), false);
 
@@ -74,7 +74,7 @@ AdjacencyMatrix downsample_graph(const AdjacencyMatrix adj, const MatrixXf &V,
         mergeFlag[e.i] = mergeFlag[e.j] = true;
         entries[nCollapsed++] = entries[i];
     }
-    uint32_t vertexCount = V.cols() - nCollapsed;
+    uint32_t vertexCount = (uint32_t)V.cols() - nCollapsed;
 
     /* Allocate memory for coarsened graph */
     V_p.resize(3, vertexCount);
@@ -104,8 +104,6 @@ AdjacencyMatrix downsample_graph(const AdjacencyMatrix adj, const MatrixXf &V,
             SHOW_PROGRESS_RANGE(range, nCollapsed, "Downsampling graph (3/6)");
         }
     );
-
-    delete[] entries;
 
     std::atomic<int> offset(nCollapsed);
     tbb::blocked_range<uint32_t> range(0u, (uint32_t) V.cols(), GRAIN_SIZE);
@@ -142,14 +140,14 @@ AdjacencyMatrix downsample_graph(const AdjacencyMatrix adj, const MatrixXf &V,
                     uint32_t upper = to_upper(j, i);
                     if (upper == INVALID)
                         continue;
-                    for (Link *link = adj[upper]; link != adj[upper+1]; ++link)
+                    for (const Link *link = adj[upper]; link != adj[upper+1]; ++link)
                         scratch.push_back(Link(to_lower[link->id], link->weight));
                 }
 
                 std::sort(scratch.begin(), scratch.end());
                 uint32_t id = INVALID, size = 0;
                 for (const auto &link : scratch) {
-                    if (id != link.id && link.id != i) {
+                    if (id != link.id && link.id != (uint32_t)i) {
                         id = link.id;
                         ++size;
                     }
@@ -165,10 +163,10 @@ AdjacencyMatrix downsample_graph(const AdjacencyMatrix adj, const MatrixXf &V,
         neighborhoodSize[i+1] += neighborhoodSize[i];
 
     uint32_t nLinks_p = neighborhoodSize[neighborhoodSize.size()-1];
-    AdjacencyMatrix adj_p = new Link*[V_p.size() + 1];
-    Link *links = new Link[nLinks_p];
+    AdjacencyMatrix adj_p(V_p.size(), nLinks_p);
+    Link *links = adj_p.data();
     for (uint32_t i=0; i<neighborhoodSize.size(); ++i)
-        adj_p[i] = links + neighborhoodSize[i];
+        adj_p.setRow(i, links + neighborhoodSize[i]);
 
     tbb::parallel_for(
         tbb::blocked_range<uint32_t>(0u, (uint32_t) V_p.cols(), GRAIN_SIZE),
@@ -181,14 +179,14 @@ AdjacencyMatrix downsample_graph(const AdjacencyMatrix adj, const MatrixXf &V,
                     uint32_t upper = to_upper(j, i);
                     if (upper == INVALID)
                         continue;
-                    for (Link *link = adj[upper]; link != adj[upper+1]; ++link)
+                    for (const Link *link = adj[upper]; link != adj[upper+1]; ++link)
                         scratch.push_back(Link(to_lower[link->id], link->weight));
                 }
                 std::sort(scratch.begin(), scratch.end());
                 Link *dest = adj_p[i];
                 uint32_t id = INVALID;
                 for (const auto &link : scratch) {
-                    if (link.id != i) {
+                    if (link.id != (uint32_t)i) {
                         if (id != link.id) {
                             *dest++ = link;
                             id = link.id;
@@ -439,9 +437,9 @@ void MultiResolutionHierarchy::build(bool deterministic, const ProgressCallback 
                              toUpper, toLower, deterministic, progress);
 
         if (deterministic)
-            generate_graph_coloring_deterministic(adj_p, V_p.cols(), phases_p, progress);
+            generate_graph_coloring_deterministic(adj_p, (uint32_t)V_p.cols(), phases_p, progress);
         else
-            generate_graph_coloring(adj_p, V_p.cols(), phases_p, progress);
+            generate_graph_coloring(adj_p, (uint32_t)V_p.cols(), phases_p, progress);
 
         mTotalSize += V_p.cols();
         mPhases.push_back(std::move(phases_p));
@@ -472,7 +470,7 @@ void init_random_tangent(const MatrixXf &N, MatrixXf &Q) {
             for (uint32_t i = range.begin(); i != range.end(); ++i) {
                 Vector3f s, t;
                 coordinate_system(N.col(i), s, t);
-                float angle = rng.nextFloat() * 2 * M_PI;
+                float angle = rng.nextFloat() * 2 * (float)M_PI;
                 Q.col(i) = s * std::cos(angle) + t * std::sin(angle);
             }
         }
@@ -512,11 +510,7 @@ void MultiResolutionHierarchy::resetSolution() {
     cout << "done. (took " << timeString(timer.value()) << ")" << endl;
 }
 
-void MultiResolutionHierarchy::free() {
-    for (size_t i=0; i<mAdj.size(); ++i) {
-        delete[] mAdj[i][0];
-        delete[] mAdj[i];
-    }
+void MultiResolutionHierarchy::clear() {
     mAdj.clear(); mV.clear(); mQ.clear();
     mO.clear(); mN.clear(); mA.clear();
     mCQ.clear(); mCO.clear();
@@ -538,14 +532,14 @@ void MultiResolutionHierarchy::save(Serializer &serializer) {
     serializer.set("E2E", mE2E);
     serializer.set("frozenO", mFrozenO);
     serializer.set("frozenQ", mFrozenQ);
-    for (uint32_t i=0; i<mV.size(); ++i) {
+    for (uint32_t i=0; i<(uint32_t)mV.size(); ++i) {
         serializer.pushPrefix(std::to_string(i));
         serializer.set("V", mV[i]);
         serializer.set("N", mN[i]);
         serializer.set("A", mA[i]);
         serializer.set("O", mO[i]);
         serializer.set("Q", mQ[i]);
-        if (i < mV.size() - 1) {
+        if (i < (uint32_t)mV.size() - 1) {
             serializer.set("toLower", mToLower[i]);
             serializer.set("toUpper", mToUpper[i]);
         }
@@ -558,10 +552,10 @@ void MultiResolutionHierarchy::save(Serializer &serializer) {
         std::vector<std::vector<uint32_t>> link_ivar(size(i));
         std::vector<std::vector<Float>> link_weight(size(i));
         for (uint32_t j=0; j<size(i); ++j) {
-            size_t size = adj[j+1] - adj[j];
-            link_id[j].reserve(size);
-            link_weight[j].reserve(size);
-            link_ivar[j].reserve(size);
+            size_t size_val = adj[j+1] - adj[j];
+            link_id[j].reserve(size_val);
+            link_weight[j].reserve(size_val);
+            link_ivar[j].reserve(size_val);
             for (const Link *link = adj[j]; link != adj[j+1]; ++link) {
                 link_id[j].push_back(link->id);
                 link_weight[j].push_back(link->weight);
@@ -577,9 +571,9 @@ void MultiResolutionHierarchy::save(Serializer &serializer) {
 }
 
 void MultiResolutionHierarchy::load(const Serializer &serializer) {
-    free();
-    uint32_t levels;
-    serializer.get("levels", levels);
+    clear();
+    uint32_t levels_val;
+    serializer.get("levels", levels_val);
     serializer.get("iterations_O", mIterationsO);
     serializer.get("iterations_Q", mIterationsQ);
     serializer.get("totalSize", mTotalSize);
@@ -588,18 +582,18 @@ void MultiResolutionHierarchy::load(const Serializer &serializer) {
     serializer.get("E2E", mE2E);
     serializer.get("frozenO", mFrozenO);
     serializer.get("frozenQ", mFrozenQ);
-    for (uint32_t i=0; i<levels; ++i) {
+    for (uint32_t i=0; i<levels_val; ++i) {
         serializer.pushPrefix(std::to_string(i));
         MatrixXf V, N, O, Q, CQ, CO;
         VectorXf A, CQw, COw;
-        std::vector<std::vector<uint32_t>> phases;
+        std::vector<std::vector<uint32_t>> phases_val;
 
         serializer.get("V", V);
         serializer.get("N", N);
         serializer.get("A", A);
         serializer.get("O", O);
         serializer.get("Q", Q);
-        serializer.get("phases", phases);
+        serializer.get("phases", phases_val);
 
         serializer.get("CQ", CQ);
         serializer.get("CQw", CQw);
@@ -615,15 +609,15 @@ void MultiResolutionHierarchy::load(const Serializer &serializer) {
         mCO.push_back(std::move(CO));
         mCQw.push_back(std::move(CQw));
         mCOw.push_back(std::move(COw));
-        mPhases.push_back(std::move(phases));
+        mPhases.push_back(std::move(phases_val));
 
-        if (i < levels - 1) {
-            MatrixXu toUpper;
-            VectorXu toLower;
-            serializer.get("toLower", toLower);
-            serializer.get("toUpper", toUpper);
-            mToLower.push_back(std::move(toLower));
-            mToUpper.push_back(std::move(toUpper));
+        if (i < levels_val - 1) {
+            MatrixXu toUpper_val;
+            VectorXu toLower_val;
+            serializer.get("toLower", toLower_val);
+            serializer.get("toUpper", toUpper_val);
+            mToLower.push_back(std::move(toLower_val));
+            mToUpper.push_back(std::move(toUpper_val));
         }
 
         std::vector<std::vector<uint32_t>> adj_id;
@@ -637,24 +631,25 @@ void MultiResolutionHierarchy::load(const Serializer &serializer) {
             throw std::runtime_error("Could not unserialize data");
         uint32_t linkCount = 0;
 
-        for (uint32_t j=0; j<adj_id.size(); ++j) {
+        for (uint32_t j=0; j<(uint32_t)adj_id.size(); ++j) {
             if (adj_id[j].size() != adj_ivar[j].size() || adj_ivar[j].size() != adj_weight[j].size())
                 throw std::runtime_error("Could not unserialize data");
-            linkCount += adj_id[j].size();
+            linkCount += (uint32_t)adj_id[j].size();
         }
 
-        AdjacencyMatrix adj = new Link*[adj_id.size() + 1];
-        adj[0] = new Link[linkCount];
-        for (uint32_t j=0; j<adj_id.size(); ++j)
-            adj[j+1] = adj[j] + adj_id[j].size();
-        for (uint32_t j=0; j<adj_id.size(); ++j) {
-            for (uint32_t k=0; k<adj_id[j].size(); ++k) {
+        AdjacencyMatrix adj((uint32_t)adj_id.size(), linkCount);
+        Link *links = adj.data();
+        adj.setRow(0, links);
+        for (uint32_t j=0; j<(uint32_t)adj_id.size(); ++j)
+            adj.setRow(j+1, adj[j] + adj_id[j].size());
+        for (uint32_t j=0; j<(uint32_t)adj_id.size(); ++j) {
+            for (uint32_t k=0; k<(uint32_t)adj_id[j].size(); ++k) {
                 adj[j][k].id = adj_id[j][k];
                 adj[j][k].ivar_uint32 = adj_ivar[j][k];
-                adj[j][k].weight = adj_weight[j][k];
+                adj[j][k].weight = (float)adj_weight[j][k];
             }
         }
-        mAdj.push_back(adj);
+        mAdj.push_back(std::move(adj));
         serializer.popPrefix();
     }
 }
@@ -721,7 +716,7 @@ void MultiResolutionHierarchy::propagateSolution(int rosy) {
             }
         );
     }
-    cout << "done. (took " << timeString(timer.value()) << ")" << endl;
+    cout << "done. (took " << timeString(timer.reset()) << ")" << endl;
 }
 
 void MultiResolutionHierarchy::propagateConstraints(int rosy, int posy) {
@@ -833,7 +828,7 @@ void MultiResolutionHierarchy::propagateConstraints(int rosy, int posy) {
             }
         );
     }
-    cout << "done. (took " << timeString(timer.value()) << ")" << endl;
+    cout << "done. (took " << timeString(timer.reset()) << ")" << endl;
 }
 
 void MultiResolutionHierarchy::printStatistics() const {

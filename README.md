@@ -1,72 +1,91 @@
-# Instant Meshes
-[![Build Status](https://travis-ci.org/wjakob/instant-meshes.svg?branch=master)](https://travis-ci.org/wjakob/instant-meshes)
-[![Build status](https://ci.appveyor.com/api/projects/status/dm4kqxhin5uxiey0/branch/master?svg=true)](https://ci.appveyor.com/project/wjakob/instant-meshes/branch/master)
+# Instant Meshes Toolkit
 
-<img width="170" height="166" src="https://github.com/wjakob/instant-meshes/raw/master/resources/icon.png">
+[![License](https://img.shields.io/badge/license-BSD-blue.svg)](LICENSE.txt)
 
-This repository contains the interactive meshing software developed as part of the publication
+Instant Meshes Toolkit is a professional-grade geometry processing suite based on the algorithm "Instant Field-Aligned Meshes" (SIGGRAPH Asia 2015). It provides a robust, high-level API and a set of command-line utilities for high-quality field-aligned remeshing.
 
-> **Instant Field-Aligned Meshes**<br/>
-> Wenzel Jakob, Marco Tarini, Daniele Panozzo, Olga Sorkine-Hornung<br/>
-> In *ACM Transactions on Graphics (Proceedings of SIGGRAPH Asia 2015)*<br/>
-> [PDF](http://igl.ethz.ch/projects/instant-meshes/instant-meshes-SA-2015-jakob-et-al.pdf),
-> [Video](https://www.youtube.com/watch?v=U6wtw6W4x3I),
-> [Project page](http://igl.ethz.ch/projects/instant-meshes/)
+## Features
 
+- **Field-Aligned Remeshing**: Generate high-quality quad or triangle meshes from any input.
+- **Smart Defaults**: Automatically detects input topology and density to preserve detail without manual tuning.
+- **Robust Format Support**: Native support for **PLY, OBJ, STL (Binary), and OFF**.
+- **Vertex Welding**: High-performance welding logic to fix "triangle soup" artifacts in STL files.
+- **Professional CLI**: Modern command-line interface with flags, help messages, and batch processing.
+- **Python Bindings**: Extremely fast and lightweight bindings using **nanobind**.
+- **Progress Reporting**: Real-time visual feedback for all long-running operations.
 
-##### In commercial software
+## Command Line Utilities
 
-Since version 10.2, Modo uses the Instant Meshes algorithm to implement its
-automatic retopology feature. An interview discussing this technique and more
-recent projects is available [here](https://www.foundry.com/trends/design-visualisation/mitsuba-renderer-instant-meshes).
+The toolkit provides three primary applications in the `build/` directory:
 
-## Screenshot
+### `tri2quads`
+Convert any triangle mesh into a quad-dominant mesh.
+```bash
+./tri2quads input.obj -o output.ply --faces 5000 --align-boundaries
+```
 
-![Instant Meshes logo](https://github.com/wjakob/instant-meshes/raw/master/resources/screenshot.jpg)
+### `remesh`
+Remesh an input while preserving its original topology (Tri/Quad) and density.
+```bash
+./remesh input.stl --crease 45.0 --smooth 3
+```
 
-## Pre-compiled binaries
+### `quad2tris`
+Convert a quad mesh into a high-quality triangle mesh.
+```bash
+./quad2tris input.obj
+```
 
-The following binaries (Intel, 64 bit) are automatically generated from the latest GitHub revision.
+### `mesh-clean`
+Sanitize dirty meshes by removing non-manifold elements.
+```bash
+./mesh-clean complex_scan.stl
+```
 
-> [Microsoft Windows](https://instant-meshes.s3.eu-central-1.amazonaws.com/Release/instant-meshes-windows.zip)<br/>
-> [Mac OS X](https://instant-meshes.s3.eu-central-1.amazonaws.com/instant-meshes-macos.zip)<br/>
-> [Linux](https://instant-meshes.s3.eu-central-1.amazonaws.com/instant-meshes-linux.zip)
+**Batch Processing**: All utilities support multiple input files and output directories.
+```bash
+./tri2quads assets/*.obj --out-dir processed/
+```
 
-Please also fetch the following dataset ZIP file and extract it so that the
-``datasets`` folder is in the same directory as ``Instant Meshes``, ``Instant Meshes.app``,
-or ``Instant Meshes.exe``.
+## Python API
 
-> [Datasets](https://instant-meshes.s3.eu-central-1.amazonaws.com/instant-meshes-datasets.zip)
+The `instant_meshes_python` module allows you to integrate the toolkit into your Python pipelines with just a few lines of code.
 
-Note: On Linux, Instant Meshes relies on the program ``zenity``, which must be installed.
+```python
+import instant_meshes_python as im
 
-## Compiling
+# Initialize and load
+mesh = im.InstantMesh()
+mesh.load("bunny.obj")
 
-Compiling from scratch requires CMake and a recent version of XCode on Mac,
-Visual Studio 2015 on Windows, and GCC on Linux. 
+# Optional: Set a progress callback
+mesh.set_progress_callback(lambda msg, p: print(f"{msg}: {p*100:.1f}%"))
 
-On MacOS, compiling should be as simple as
+# High-level remeshing
+mesh.create_quadmesh(target_faces=10000)
 
-    git clone --recursive https://github.com/wjakob/instant-meshes
-    cd instant-meshes
-    cmake .
-    make -j 4
+# Save the result
+mesh.save("bunny_quads.ply")
+```
 
-To build on Linux, please install the prerequisites ``libxrandr-dev``,
-``libxinerama-dev``, ``libxcursor-dev``, and ``libxi-dev`` and then use the
-same sequence of commands shown above for MacOS.
+## Installation
 
-On Windows, open the generated file ``InstantMeshes.sln`` after step 3 and proceed building as usual from within Visual Studio.
+### Prerequisites
+- CMake 3.12 or newer
+- A C++20 compliant compiler
+- Python 3.8+ (for bindings)
 
-## Usage
+### Build Instructions
+```bash
+mkdir build && cd build
+cmake ..
+make -j
+```
+Dependencies like `nanobind` and `argparse` are automatically fetched by CMake.
 
-To get started, launch the binary and select a dataset using the "Open mesh" button on the top left (the application must be located in the same directory as the 'datasets' folder, otherwise the panel will be empty).
+## Technical Details
 
-The standard workflow is to solve for an orientation field (first blue button) and a position field (second blue button) in sequence, after which the 'Export mesh' button becomes active. Many user interface elements display a descriptive message when hovering the mouse cursor above for a second.
+The toolkit is built on a high-resolution field optimization core. It optimizes an orientation field followed by a position field to guide the extraction of elements. By consolidating the paper's complex configuration into high-level C++ methods, the toolkit makes state-of-the-art remeshing accessible to production environments.
 
-A range of additional information about the input mesh, the computed fields,
-and the output mesh can be visualized using the check boxes accessible via the
-'Advanced' panel.
-
-Clicking the left mouse button and dragging rotates the object; right-dragging
-(or shift+left-dragging) translates, and the mouse wheel zooms. The fields can also be manipulated using brush tools that are accessible by clicking the first icon in each 'Tool' row.
+## License
+The core implementation is based on the original work by Wenzel Jakob et al. and is licensed under the BSD license.

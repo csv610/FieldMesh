@@ -171,6 +171,21 @@ Viewer::Viewer(bool fullscreen, bool deterministic)
         loadInput(mExampleImages[i].second);
     });
 
+    Button *openFileBtn = new Button(window, "Open from file ..", ENTYPO_ICON_UPLOAD);
+    openFileBtn->setBackgroundColor(Color(0, 255, 0, 25));
+    openFileBtn->setCallback([&] {
+        std::cout << "Open from file button clicked!" << std::endl;
+        std::string filename = nanogui::file_dialog({
+            {"obj", "Wavefront OBJ"},
+            {"ply", "Stanford PLY"},
+            {"aln", "Aligned point cloud"}
+        }, false);
+        std::cout << "File dialog returned: " << filename << std::endl;
+        if (!filename.empty()) {
+            loadInput(filename);
+        }
+    });
+
     PopupButton *advancedBtn = new PopupButton(window, "Advanced");
     advancedBtn->setIcon(ENTYPO_ICON_ROCKET);
     advancedBtn->setBackgroundColor(Color(100, 0, 0, 25));
@@ -649,7 +664,7 @@ Viewer::~Viewer() {
     if (mBVH)
         delete mBVH;
     mOptimizer.shutdown();
-    mRes.free();
+    mRes.clear();
     mPointShader24.free();
     mPointShader63.free();
     mPointShader44.free();
@@ -665,6 +680,17 @@ Viewer::~Viewer() {
     mOutputMeshWireframeShader.free();
     mOutputMeshShader.free();
     mFBO.free();
+}
+
+bool Viewer::dropEvent(const std::vector<std::string> &filenames) {
+    if (!filenames.empty()) {
+        try {
+            loadInput(filenames[0]);
+        } catch (const std::exception &e) {
+            new MessageDialog(this, MessageDialog::Type::Warning, "Error", e.what());
+        }
+    }
+    return true;
 }
 
 void Viewer::draw(NVGcontext *ctx) {
@@ -1418,7 +1444,7 @@ void Viewer::extractConsensusGraph() {
         tbb::blocked_range<uint32_t>(0u, (uint32_t) V.cols(), GRAIN_SIZE),
         [&](const tbb::blocked_range<uint32_t> &range) {
             for (uint32_t i = range.begin(); i<range.end(); ++i) {
-                for (Link *link = adj[i]; link != adj[i+1]; ++link) {
+                for (const Link *link = adj[i]; link != adj[i+1]; ++link) {
                     uint32_t j = link->id;
                     if (j <= i)
                         continue;
@@ -2127,9 +2153,9 @@ void Viewer::loadState(std::string filename, bool compat) {
 
         if (mBVH) {
             delete mBVH;
-            mBVH = NULL;
+            mBVH = nullptr;
         }
-        mRes.free();
+        mRes.clear();
         state.pushPrefix("mres");
         mRes.load(state);
         state.popPrefix();
@@ -2162,8 +2188,8 @@ void Viewer::computeCameraMatrices(Eigen::Matrix4f &model,
     proj = frustum(-fW, fW, -fH, fH, mCamera.dnear, mCamera.dfar);
     model = mCamera.arcball.matrix();
 
-    model = scale(model, Eigen::Vector3f::Constant(mCamera.zoom * mCamera.modelZoom));
-    model = translate(model, mCamera.modelTranslation);
+    model = model * scale(Eigen::Vector3f::Constant(mCamera.zoom * mCamera.modelZoom));
+    model = model * translate(mCamera.modelTranslation);
 }
 
 std::pair<Vector3f, Vector3f> Viewer::singularityPositionAndNormal(uint32_t f) const {
@@ -3034,20 +3060,25 @@ bool Viewer::mouseButtonEvent(const Vector2i &p, int button, bool down, int modi
 
 void Viewer::loadInput(std::string filename, Float creaseAngle, Float scale,
                       int face_count, int vertex_count, int rosy, int posy, int knn_points) {
-    std::string extension;
-    if (filename.size() > 4)
-        extension = str_tolower(filename.substr(filename.size()-4));
-
     if (filename.empty()) {
+        std::cout << "Requesting file dialog.." << std::endl;
         filename = nanogui::file_dialog({
             {"obj", "Wavefront OBJ"},
             {"ply", "Stanford PLY"},
             {"aln", "Aligned point cloud"}
         }, false);
-        if (filename == "")
+        if (filename == "") {
+            std::cout << "File dialog cancelled." << std::endl;
             return;
-    } else if (extension != ".ply" && extension != ".obj" && extension != ".aln")
-        filename = filename + ".ply";
+        }
+        std::cout << "File selected: " << filename << std::endl;
+    } else {
+        std::string extension;
+        if (filename.size() > 4)
+            extension = str_tolower(filename.substr(filename.size()-4));
+        if (extension != ".ply" && extension != ".obj" && extension != ".aln")
+            filename = filename + ".ply";
+    }
 
     if (!std::isfinite(creaseAngle)) {
         if (filename.find("fandisk") != std::string::npos || filename.find("cube_twist") != std::string::npos)
@@ -3142,7 +3173,7 @@ void Viewer::loadInput(std::string filename, Float creaseAngle, Float scale,
         mNonmanifoldVertices.setConstant(false);
     }
 
-    mRes.free();
+    mRes.clear();
     mRes.setF(std::move(F));
     mRes.setV(std::move(V));
 

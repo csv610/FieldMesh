@@ -1,5 +1,5 @@
 /*
-    main.cpp -- Instant Meshes application entry point
+    imesh_vis.cpp -- Graphical user interface to Instant Meshes
 
     This file is part of the implementation of
 
@@ -11,25 +11,25 @@
     BSD-style license that can be found in the LICENSE.txt file.
 */
 
-#include "batch.h"
 #include "viewer.h"
 #include "serializer.h"
+#include <nanogui/nanogui.h>
 #include <thread>
 #include <cstdlib>
+#include <tbb/global_control.h>
 
 /* Force usage of discrete GPU on laptops */
 NANOGUI_FORCE_DISCRETE_GPU();
 
-int nprocs = -1;
+extern int nprocs;
 
 int main(int argc, char **argv) {
     std::vector<std::string> args;
-    bool extrinsic = true, dominant = false, align_to_boundaries = false;
+    bool extrinsic = true;
     bool fullscreen = false, help = false, deterministic = false, compat = false;
     int rosy = 4, posy = 4, face_count = -1, vertex_count = -1;
-    uint32_t knn_points = 10, smooth_iter = 2;
+    uint32_t knn_points = 10;
     Float crease_angle = -1, scale = -1;
-    std::string batchOutput;
     #if defined(__APPLE__)
         bool launched_from_finder = false;
     #endif
@@ -45,19 +45,13 @@ int main(int argc, char **argv) {
             } else if (strcmp("--intrinsic", argv[i]) == 0 || strcmp("-i", argv[i]) == 0) {
                 extrinsic = false;
             } else if (strcmp("--boundaries", argv[i]) == 0 || strcmp("-b", argv[i]) == 0) {
-                align_to_boundaries = true;
+                /* Ignore for GUI mode */
             } else if (strcmp("--threads", argv[i]) == 0 || strcmp("-t", argv[i]) == 0) {
                 if (++i >= argc) {
                     cerr << "Missing thread count!" << endl;
                     return -1;
                 }
                 nprocs = str_to_uint32_t(argv[i]);
-            } else if (strcmp("--smooth", argv[i]) == 0 || strcmp("-S", argv[i]) == 0) {
-                if (++i >= argc) {
-                    cerr << "Missing smoothing iteration count argument!" << endl;
-                    return -1;
-                }
-                smooth_iter = str_to_uint32_t(argv[i]);
             } else if (strcmp("--knn", argv[i]) == 0 || strcmp("-k", argv[i]) == 0) {
                 if (++i >= argc) {
                     cerr << "Missing knn point count argument!" << endl;
@@ -102,14 +96,6 @@ int main(int argc, char **argv) {
                     return -1;
                 }
                 vertex_count = str_to_int32_t(argv[i]);
-            } else if (strcmp("--output", argv[i]) == 0 || strcmp("-o", argv[i]) == 0) {
-                if (++i >= argc) {
-                    cerr << "Missing batch mode output file argument!" << endl;
-                    return -1;
-                }
-                batchOutput = argv[i];
-            } else if (strcmp("--dominant", argv[i]) == 0 || strcmp("-D", argv[i]) == 0) {
-                dominant = true;
             } else if (strcmp("--compat", argv[i]) == 0 || strcmp("-C", argv[i]) == 0) {
                 compat = true;
 #if defined(__APPLE__)
@@ -144,15 +130,12 @@ int main(int argc, char **argv) {
         help = true;
     }
 
-    if (args.size() > 1 || help || (!batchOutput.empty() && args.size() == 0)) {
-        cout << "Syntax: " << argv[0] << " [options] <input mesh / point cloud / application state snapshot>" << endl;
+    if (args.size() > 1 || help) {
+        cout << "Syntax: " << argv[0] << " [options] [input mesh / point cloud / application state snapshot]" << endl;
         cout << "Options:" << endl;
-        cout << "   -o, --output <output>     Writes to the specified PLY/OBJ output file in batch mode" << endl;
         cout << "   -t, --threads <count>     Number of threads used for parallel computations" << endl;
         cout << "   -d, --deterministic       Prefer (slower) deterministic algorithms" << endl;
         cout << "   -c, --crease <degrees>    Dihedral angle threshold for creases" << endl;
-        cout << "   -S, --smooth <iter>       Number of smoothing & ray tracing reprojection steps (default: 2)" << endl;
-        cout << "   -D, --dominant            Generate a tri/quad dominant mesh instead of a pure tri/quad mesh" << endl;
         cout << "   -i, --intrinsic           Intrinsic mode (extrinsic is the default)" << endl;
         cout << "   -b, --boundaries          Align to boundaries (only applies when the mesh is not closed)" << endl;
         cout << "   -r, --rosy <number>       Specifies the orientation symmetry type (2, 4, or 6)" << endl;
@@ -167,23 +150,8 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    if (args.size() == 0)
-        cout << "Running in GUI mode, start with -h for instructions on batch mode." << endl;
-
-    tbb::task_scheduler_init init(nprocs == -1 ? tbb::task_scheduler_init::automatic : nprocs);
-
-    if (!batchOutput.empty() && args.size() == 1) {
-        try {
-            batch_process(args[0], batchOutput, rosy, posy, scale, face_count,
-                          vertex_count, crease_angle, extrinsic,
-                          align_to_boundaries, smooth_iter, knn_points,
-                          !dominant, deterministic);
-            return 0;
-        } catch (const std::exception &e) {
-            cerr << "Caught runtime error : " << e.what() << endl;
-            return -1;
-        }
-    }
+    tbb::global_control control(tbb::global_control::max_allowed_parallelism,
+                                nprocs == -1 ? std::thread::hardware_concurrency() : nprocs);
 
     try {
         nanogui::init();
@@ -215,7 +183,7 @@ int main(int argc, char **argv) {
     } catch (const std::runtime_error &e) {
         std::string error_msg = std::string("Caught a fatal error: ") + std::string(e.what());
         #if defined(_WIN32)
-            MessageBoxA(nullptr, error_msg.c_str(), NULL, MB_ICONERROR | MB_OK);
+            MessageBoxA(nullptr, error_msg.c_str(), nullptr, MB_ICONERROR | MB_OK);
         #else
             std::cerr << error_msg << endl;
         #endif

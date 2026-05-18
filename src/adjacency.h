@@ -16,6 +16,7 @@
 #pragma once
 
 #include "common.h"
+#include <memory>
 
 /* Stores integer jumps between nodes of the adjacency matrix */
 struct IntegerVariable {
@@ -27,9 +28,9 @@ struct IntegerVariable {
         return Vector2i(translate_u, translate_v);
     }
 
-    void setShift(Vector2i &v) {
-        translate_u = v.x();
-        translate_v = v.y();
+    void setShift(const Vector2i &v) {
+        translate_u = (signed short) v.x();
+        translate_v = (signed short) v.y();
     }
 };
 
@@ -49,7 +50,55 @@ struct Link {
     inline bool operator<(const Link &link) const { return id < link.id; }
 } ;
 
-typedef Link** AdjacencyMatrix;
+class AdjacencyMatrix {
+public:
+    AdjacencyMatrix() : mRows(nullptr), mData(nullptr) { }
+    AdjacencyMatrix(std::nullptr_t) : mRows(nullptr), mData(nullptr) { }
+    AdjacencyMatrix(size_t nVertices, size_t nLinks) {
+        mRows = new Link*[nVertices + 1];
+        mData = new Link[nLinks];
+    }
+    ~AdjacencyMatrix() {
+        delete[] mRows;
+        delete[] mData;
+    }
+
+    AdjacencyMatrix(const AdjacencyMatrix &) = delete;
+    AdjacencyMatrix &operator=(const AdjacencyMatrix &) = delete;
+
+    AdjacencyMatrix(AdjacencyMatrix &&other) noexcept : mRows(other.mRows), mData(other.mData) {
+        other.mRows = nullptr;
+        other.mData = nullptr;
+    }
+
+    AdjacencyMatrix &operator=(AdjacencyMatrix &&other) noexcept {
+        if (this != &other) {
+            delete[] mRows;
+            delete[] mData;
+            mRows = other.mRows;
+            mData = other.mData;
+            other.mRows = nullptr;
+            other.mData = nullptr;
+        }
+        return *this;
+    }
+
+    inline Link* operator[](size_t i) { return mRows[i]; }
+    inline const Link* operator[](size_t i) const { return mRows[i]; }
+
+    inline Link** get() { return mRows; }
+    inline Link* const* get() const { return mRows; }
+
+    inline bool operator!() const { return mRows == nullptr; }
+    inline operator bool() const { return mRows != nullptr; }
+
+    void setRow(size_t i, Link* row) { mRows[i] = row; }
+    Link* data() { return mData; }
+
+private:
+    Link **mRows;
+    Link *mData;
+};
 
 extern AdjacencyMatrix generate_adjacency_matrix_uniform(
     const MatrixXu &F, const VectorXu &V2E,

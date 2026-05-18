@@ -14,6 +14,7 @@
 #pragma once
 
 #include "aabb.h"
+#include <memory>
 
 /* BVH node in 32 bytes */
 struct BVHNode {
@@ -100,7 +101,7 @@ protected:
 
 protected:
     std::vector<BVHNode> mNodes;
-    uint32_t *mIndices;
+    std::unique_ptr<uint32_t[]> mIndices;
     const MatrixXu *mF;
     const MatrixXf *mV, *mN;
     ProgressCallback mProgress;

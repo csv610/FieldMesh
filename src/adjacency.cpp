@@ -58,11 +58,11 @@ AdjacencyMatrix generate_adjacency_matrix_uniform(
     for (uint32_t i=0; i<neighborhoodSize.size()-1; ++i)
         neighborhoodSize[i+1] += neighborhoodSize[i];
 
-    AdjacencyMatrix adj = new Link*[V2E.size() + 1];
     uint32_t nLinks = neighborhoodSize[neighborhoodSize.size()-1];
-    Link *links = new Link[nLinks];
+    AdjacencyMatrix adj(V2E.size(), nLinks);
+    Link *links = adj.data();
     for (uint32_t i=0; i<neighborhoodSize.size(); ++i)
-        adj[i] = links + neighborhoodSize[i];
+        adj.setRow(i, links + neighborhoodSize[i]);
 
     tbb::parallel_for(
         tbb::blocked_range<uint32_t>(0u, (uint32_t) V2E.size(), GRAIN_SIZE),
@@ -136,11 +136,11 @@ generate_adjacency_matrix_cotan(const MatrixXu &F, const MatrixXf &V,
     for (uint32_t i=0; i<neighborhoodSize.size()-1; ++i)
         neighborhoodSize[i+1] += neighborhoodSize[i];
 
-    AdjacencyMatrix adj = new Link*[V2E.size() + 1];
     uint32_t nLinks = neighborhoodSize[neighborhoodSize.size()-1];
-    Link *links = new Link[nLinks];
+    AdjacencyMatrix adj(V2E.size(), nLinks);
+    Link *links = adj.data();
     for (uint32_t i=0; i<neighborhoodSize.size(); ++i)
-        adj[i] = links + neighborhoodSize[i];
+        adj.setRow(i, links + neighborhoodSize[i]);
 
     tbb::parallel_for(
         tbb::blocked_range<uint32_t>(0u, (uint32_t)V.cols(), GRAIN_SIZE),
@@ -228,7 +228,7 @@ AdjacencyMatrix generate_adjacency_matrix_pointcloud(
     stats.mAverageEdgeLength = bvh->diskRadius();
     const Float maxQueryRadius = bvh->diskRadius() * 3;
 
-    uint32_t *adj_sets = new uint32_t[V.cols() * (size_t) knn_points];
+    std::vector<uint32_t> adj_sets(V.cols() * (size_t) knn_points);
 
     DisjointSets dset(V.cols());
     VectorXu adj_size(V.cols());
@@ -237,7 +237,7 @@ AdjacencyMatrix generate_adjacency_matrix_pointcloud(
         [&](const tbb::blocked_range<uint32_t> &range) {
             std::vector<std::pair<Float, uint32_t>> result;
             for (uint32_t i = range.begin(); i < range.end(); ++i) {
-                uint32_t *adj_set = adj_sets + (size_t) i * (size_t) knn_points;
+                uint32_t *adj_set = adj_sets.data() + (size_t) i * (size_t) knn_points;
                 memset(adj_set, 0xFF, sizeof(uint32_t) * knn_points);
                 Float radius = maxQueryRadius;
                 bvh->findKNearest(V.col(i), N.col(i), knn_points, radius, result);
@@ -257,13 +257,13 @@ AdjacencyMatrix generate_adjacency_matrix_pointcloud(
     std::map<uint32_t, uint32_t> dset_size;
     for (uint32_t i=0; i<V.cols(); ++i) {
         dset_size[dset.find(i)]++;
-        uint32_t *adj_set_i = adj_sets + (size_t) i * (size_t) knn_points;
+        uint32_t *adj_set_i = adj_sets.data() + (size_t) i * (size_t) knn_points;
 
         for (uint32_t j=0; j<knn_points; ++j) {
             uint32_t k = adj_set_i[j];
             if (k == INVALID)
                 break;
-            uint32_t *adj_set_k = adj_sets + (size_t) k * (size_t) knn_points;
+            uint32_t *adj_set_k = adj_sets.data() + (size_t) k * (size_t) knn_points;
             bool found = false;
             for (uint32_t l=0; l<knn_points; ++l) {
                 uint32_t value = adj_set_k[l];
@@ -289,14 +289,14 @@ AdjacencyMatrix generate_adjacency_matrix_pointcloud(
     cout << "allocating " << memString(sizeof(Link) * nLinks) << " .. ";
     cout.flush();
 
-    AdjacencyMatrix adj = new Link*[V.size() + 1];
-    adj[0] = new Link[nLinks];
+    AdjacencyMatrix adj(V.cols(), nLinks);
     for (uint32_t i=1; i<=V.cols(); ++i) {
         uint32_t size = adj_size[i-1];
         if (size == INVALID)
             size = 0;
-        adj[i] = adj[i-1] + size;
+        adj.setRow(i, adj[i-1] + size);
     }
+    adj.setRow(0, adj.data());
 
     VectorXu adj_offset(V.cols());
     adj_offset.setZero();
@@ -305,7 +305,7 @@ AdjacencyMatrix generate_adjacency_matrix_pointcloud(
         tbb::blocked_range<uint32_t>(0u, (uint32_t) V.cols(), GRAIN_SIZE),
         [&](const tbb::blocked_range<uint32_t> &range) {
             for (uint32_t i = range.begin(); i < range.end(); ++i) {
-                uint32_t *adj_set_i = adj_sets + (size_t) i * (size_t) knn_points;
+                uint32_t *adj_set_i = adj_sets.data() + (size_t) i * (size_t) knn_points;
                 if (adj_size[i] == INVALID)
                     continue;
 
@@ -315,7 +315,7 @@ AdjacencyMatrix generate_adjacency_matrix_pointcloud(
                         break;
                     adj[i][atomicAdd(&adj_offset.coeffRef(i), 1)-1] = Link(k);
 
-                    uint32_t *adj_set_k = adj_sets + (size_t) k * (size_t) knn_points;
+                    uint32_t *adj_set_k = adj_sets.data() + (size_t) k * (size_t) knn_points;
                     bool found = false;
                     for (uint32_t l=0; l<knn_points; ++l) {
                         uint32_t value = adj_set_k[l];
@@ -332,7 +332,7 @@ AdjacencyMatrix generate_adjacency_matrix_pointcloud(
     /* Use a heuristic to estimate some useful quantities for point clouds (this
        is a biased estimate due to the kNN queries, but it's convenient and
        reasonably accurate) */
-    stats.mSurfaceArea = M_PI * stats.mAverageEdgeLength*stats.mAverageEdgeLength * 0.5f * V.cols();
+    stats.mSurfaceArea = (Float)M_PI * stats.mAverageEdgeLength*stats.mAverageEdgeLength * 0.5f * V.cols();
 
     cout << "done. (took " << timeString(timer.value()) << ")" << endl;
     return adj;
