@@ -83,9 +83,17 @@ make -j
 ```
 Dependencies like `nanobind` and `argparse` are automatically fetched by CMake.
 
-## Technical Details
+## Technical Details: How it Works
 
-The toolkit is built on a high-resolution field optimization core. It optimizes an orientation field followed by a position field to guide the extraction of elements. By consolidating the paper's complex configuration into high-level C++ methods, the toolkit makes state-of-the-art remeshing accessible to production environments.
+The algorithm behind this toolkit, **Instant Field-Aligned Meshes**, reimagines remeshing as a global optimization problem over a point-sampled surface. The process consists of three major stages:
+
+1.  **Orientation Field Optimization**: The tool first computes a sparse "cross-field" (for quads) or "6-way field" (for triangles) across the mesh. This field defines the local directions in which the new edges should align. It uses a **multi-resolution hierarchy** to solve this globally, ensuring the field remains smooth and coherent even on complex, noisy geometries.
+
+2.  **Position Field Optimization**: Once the orientations are fixed, the tool optimizes for vertex placement. It computes a smooth parameterization that maps the 3D surface into a grid-like coordinate system. This step ensures that the resulting elements have uniform size and optimal aspect ratios.
+
+3.  **Mesh Extraction**: Finally, the tool extracts the new topology by tracing the streamlines of the optimized fields. For quads, it identifies singularities (where the field "turns") and builds a clean graph of quadrilaterals. For triangles, it performs a high-quality Delaunay-style triangulation guided by the local field.
+
+By decoupling the problem into field optimization and extraction, the algorithm can produce extremely high-quality results "instantly" compared to traditional remeshing techniques, while maintaining strict adherence to the underlying surface features and boundaries.
 
 ## License
 The core implementation is based on the original work by Wenzel Jakob et al. and is licensed under the BSD license.
