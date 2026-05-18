@@ -65,6 +65,12 @@ include(FetchContent)
 # Function to patch nanogui for modern CMake
 function(patch_nanogui)
   if(nanogui_SOURCE_DIR)
+    # Only patch once
+    if(EXISTS "${nanogui_SOURCE_DIR}/.patched")
+      return()
+    endif()
+    message(STATUS "Patching NanoGUI for modern environment...")
+    
     # Patch bin2c.cmake
     if(EXISTS "${nanogui_SOURCE_DIR}/resources/bin2c.cmake")
       file(READ "${nanogui_SOURCE_DIR}/resources/bin2c.cmake" BIN2C_CONTENT)
@@ -85,6 +91,8 @@ function(patch_nanogui)
         file(WRITE ${CPP_FILE} "#include <cassert>\n${CPP_CONTENT}")
       endif()
     endforeach()
+    
+    file(TOUCH "${nanogui_SOURCE_DIR}/.patched")
   endif()
 endfunction()
 
