@@ -100,7 +100,6 @@ void load_ply(const std::string &filename, MatrixXu &F, MatrixXf &V,
     else if (!pointcloud && faceCount == 0)
         throw std::runtime_error("PLY file \"" + filename + "\" is invalid! No faces found!");
 
-    F.resize(3, faceCount);
     V.resize(3, vertexCount);
 
     struct VertexCallbackData {
@@ -111,10 +110,11 @@ void load_ply(const std::string &filename, MatrixXu &F, MatrixXf &V,
     };
 
     struct FaceCallbackData {
-        MatrixXu &F;
+        std::vector<uint32_t> &indices;
         const ProgressCallback &progress;
-        FaceCallbackData(MatrixXu &F, const ProgressCallback &progress)
-            : F(F), progress(progress) { }
+        uint32_t v0, v_prev;
+        FaceCallbackData(std::vector<uint32_t> &indices, const ProgressCallback &progress)
+            : indices(indices), progress(progress) { }
     };
 
     struct VertexNormalCallbackData {
@@ -149,23 +149,33 @@ void load_ply(const std::string &filename, MatrixXu &F, MatrixXf &V,
         long length, value_index, index;
         ply_get_argument_property(argument, nullptr, &length, &value_index);
 
-        if (length != 3)
-            throw std::runtime_error("Only triangle faces are supported!");
+        if (value_index < 0)
+            return 1;
 
         ply_get_argument_user_data(argument, (void **) &data, nullptr);
         ply_get_argument_element(argument, nullptr, &index);
 
-        if (value_index >= 0)
-            data->F(value_index, index) = (uint32_t) ply_get_argument_value(argument);
+        uint32_t v = (uint32_t) ply_get_argument_value(argument);
+        if (value_index == 0) {
+            data->v0 = v;
+        } else if (value_index == 1) {
+            data->v_prev = v;
+        } else {
+            data->indices.push_back(data->v0);
+            data->indices.push_back(data->v_prev);
+            data->indices.push_back(v);
+            data->v_prev = v;
+        }
 
         if (data->progress && value_index == 0 && index % 500000 == 0)
-            data->progress("Loading face data", index / (Float) data->F.cols());
+            data->progress("Loading face data", index / (Float) (data->indices.size() / 3)); // Approximate
 
         return 1;
     };
 
+    std::vector<uint32_t> indices;
     VertexCallbackData vcbData(V, progress);
-    FaceCallbackData fcbData(F, progress);
+    FaceCallbackData fcbData(indices, progress);
     VertexNormalCallbackData vncbData(N, progress);
 
     if (!ply_set_read_cb(ply, "vertex", "x", rply_vertex_cb, &vcbData, 0) ||
@@ -201,9 +211,13 @@ void load_ply(const std::string &filename, MatrixXu &F, MatrixXf &V,
     }
 
     ply_close(ply);
+
+    F.resize(3, indices.size() / 3);
+    memcpy(F.data(), indices.data(), sizeof(uint32_t) * indices.size());
+
     cout << "done. (V=" << vertexCount;
-    if (faceCount > 0)
-        cout << ", F=" << faceCount;
+    if (F.cols() > 0)
+        cout << ", F=" << F.cols();
     cout << ", took " << timeString(timer.value()) << ")" << endl;
 }
 
@@ -653,22 +667,26 @@ void load_off(const std::string &filename, MatrixXu &F, MatrixXf &V,
     for (uint32_t i=0; i<nFaces; ++i) {
         uint32_t nv;
         is >> nv;
-        if (nv != 3 && nv != 4)
-            throw std::runtime_error("OFF file \"" + filename + "\" contains non-triangle/quad faces!");
+        if (nv < 3)
+            throw std::runtime_error("OFF file \"" + filename + "\" contains invalid faces (less than 3 vertices)!");
+        
+        uint32_t v0, v_prev;
         for (uint32_t j=0; j<nv; ++j) {
             uint32_t idx;
             is >> idx;
-            indices.push_back(idx);
-        }
-        if (nv == 3) {
-            // Keep it as is
-        } else if (nv == 4) {
-            // Split quad into two triangles later or handle uniformly
+            if (j == 0) {
+                v0 = idx;
+            } else if (j == 1) {
+                v_prev = idx;
+            } else {
+                indices.push_back(v0);
+                indices.push_back(v_prev);
+                indices.push_back(idx);
+                v_prev = idx;
+            }
         }
     }
 
-    // This simple OFF loader assumes triangles for simplicity of F structure
-    // but Instant Meshes supports mixed. For now, let's assume triangles.
     F.resize(3, indices.size()/3);
     memcpy(F.data(), indices.data(), sizeof(uint32_t)*indices.size());
 

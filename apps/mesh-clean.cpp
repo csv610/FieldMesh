@@ -33,7 +33,7 @@ int main(int argc, char **argv) {
         if (!out_dir.empty()) {
             output_path = (std::filesystem::path(out_dir) / (p.stem().string() + "_clean" + p.extension().string())).string();
         } else {
-            output_path = (p.parent_path() / (p.stem().string() + "_clean" + p.extension().string())).string();
+            output_path = (std::filesystem::current_path() / (p.stem().string() + "_clean" + p.extension().string())).string();
         }
 
         std::cout << "Cleaning: " << input_path << " -> " << output_path << std::endl;
