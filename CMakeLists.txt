@@ -113,6 +113,12 @@ FetchContent_Declare(
   GIT_TAG        master
 )
 
+FetchContent_Declare(
+  argparse
+  GIT_REPOSITORY https://github.com/p-ranav/argparse.git
+  GIT_TAG        v3.1
+)
+
 # Populate and patch nanogui before making it available
 FetchContent_GetProperties(nanogui)
 if(NOT nanogui_POPULATED)
@@ -121,7 +127,7 @@ if(NOT nanogui_POPULATED)
   add_subdirectory(${nanogui_SOURCE_DIR} ${nanogui_BINARY_DIR})
 endif()
 
-FetchContent_MakeAvailable(pss pcg32 dset)
+FetchContent_MakeAvailable(pss pcg32 dset argparse)
 
 # IDE Folders
 if(CMAKE_GENERATOR MATCHES "Visual Studio")
@@ -221,16 +227,16 @@ set(CORE_SOURCES
 add_library(imesh_core STATIC ${CORE_SOURCES})
 target_include_directories(imesh_core SYSTEM PUBLIC
   ${nanogui_SOURCE_DIR}/include
-  ${NANOGUI_EXTRA_INCS}
-  ${EIGEN3_INCLUDE_DIR}
-  ${TBB_INCLUDE_DIRS}
 )
 target_include_directories(imesh_core PUBLIC
+  src
+  external
+  external/rply
+  external/half
   ${dset_SOURCE_DIR}
   ${pss_SOURCE_DIR}
   ${pcg32_SOURCE_DIR}
-  external/rply
-  external/half
+  ${argparse_SOURCE_DIR}/include
   ${CMAKE_CURRENT_BINARY_DIR}
 )
 target_link_libraries(imesh_core PUBLIC TBB::tbb Eigen3::Eigen)
@@ -251,8 +257,7 @@ add_executable(imesh_vis MACOSX_BUNDLE
   src/viewer.h src/viewer.cpp
   ${EXTRA_SOURCE}
 )
-target_link_libraries(imesh_vis PRIVATE imesh_core nanogui ${NANOGUI_EXTRA_LIBS})
-target_compile_definitions(imesh_vis PRIVATE ${NANOGUI_EXTRA_DEFS})
+target_link_libraries(imesh_vis PRIVATE imesh_core nanogui)
 
 # CLI executable
 add_executable(imesh_cli
@@ -263,19 +268,15 @@ target_link_libraries(imesh_cli PRIVATE imesh_core)
 # New Utilities
 add_executable(tri2quads apps/tri2quads.cpp)
 target_link_libraries(tri2quads PRIVATE imesh_core)
-target_include_directories(tri2quads PRIVATE src external)
 
 add_executable(remesh apps/remesh.cpp)
 target_link_libraries(remesh PRIVATE imesh_core)
-target_include_directories(remesh PRIVATE src external)
 
 add_executable(quad2tris apps/quad2tris.cpp)
 target_link_libraries(quad2tris PRIVATE imesh_core)
-target_include_directories(quad2tris PRIVATE src external)
 
 add_executable(mesh_clean apps/mesh-clean.cpp)
 target_link_libraries(mesh_clean PRIVATE imesh_core)
-target_include_directories(mesh_clean PRIVATE src external)
 
 # Shared configurations
 foreach(target imesh_core imesh_vis imesh_cli tri2quads remesh quad2tris mesh_clean)
