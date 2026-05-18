@@ -1,11 +1,27 @@
 cmake_minimum_required(VERSION 3.12)
 
+# Silence CMake warnings
+set(CMAKE_WARN_DEPRECATED OFF CACHE BOOL "" FORCE)
+
+# Fix compatibility with older dependencies (like nanogui) on modern CMake
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+
+# Use ccache if available
+find_program(CCACHE_PROGRAM ccache)
+if(CCACHE_PROGRAM)
+  set(CMAKE_C_COMPILER_LAUNCHER   "${CCACHE_PROGRAM}")
+  set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+endif()
+
 # Silence CMake policy warnings from dependencies
 if (POLICY CMP0048)
   cmake_policy(SET CMP0048 NEW)
 endif()
 if (POLICY CMP0175)
   cmake_policy(SET CMP0175 NEW)
+endif()
+if (POLICY CMP0169)
+  cmake_policy(SET CMP0169 OLD) # Allow FetchContent_Populate
 endif()
 
 project(InstantMeshes)
@@ -33,7 +49,7 @@ endif()
 find_package(Eigen3 REQUIRED)
 find_package(TBB REQUIRED)
 
-# Build NanoGUI
+# Build dependencies
 set(NANOGUI_BUILD_EXAMPLE OFF CACHE BOOL " " FORCE)
 set(NANOGUI_BUILD_SHARED  OFF CACHE BOOL " " FORCE)
 set(NANOGUI_BUILD_PYTHON  OFF CACHE BOOL " " FORCE)
@@ -45,6 +61,33 @@ else()
 endif()
 
 include(FetchContent)
+
+# Function to patch nanogui for modern CMake
+function(patch_nanogui)
+  if(nanogui_SOURCE_DIR)
+    # Patch bin2c.cmake
+    if(EXISTS "${nanogui_SOURCE_DIR}/resources/bin2c.cmake")
+      file(READ "${nanogui_SOURCE_DIR}/resources/bin2c.cmake" BIN2C_CONTENT)
+      string(REPLACE "cmake_minimum_required (VERSION 2.8.12)" "cmake_minimum_required(VERSION 3.10)" BIN2C_CONTENT "${BIN2C_CONTENT}")
+      file(WRITE "${nanogui_SOURCE_DIR}/resources/bin2c.cmake" "${BIN2C_CONTENT}")
+    endif()
+    # Patch CMakeLists.txt (PRE_BUILD issue)
+    if(EXISTS "${nanogui_SOURCE_DIR}/CMakeLists.txt")
+      file(READ "${nanogui_SOURCE_DIR}/CMakeLists.txt" NANOGUI_CML)
+      string(REPLACE "PRE_BUILD VERBATIM)" "VERBATIM)" NANOGUI_CML "${NANOGUI_CML}")
+      file(WRITE "${nanogui_SOURCE_DIR}/CMakeLists.txt" "${NANOGUI_CML}")
+    endif()
+    # Patch for missing <cassert> in C++20
+    file(GLOB NANOGUI_CPP_FILES "${nanogui_SOURCE_DIR}/src/*.cpp")
+    foreach(CPP_FILE ${NANOGUI_CPP_FILES})
+      file(READ ${CPP_FILE} CPP_CONTENT)
+      if (NOT CPP_CONTENT MATCHES "#include <cassert>")
+        file(WRITE ${CPP_FILE} "#include <cassert>\n${CPP_CONTENT}")
+      endif()
+    endforeach()
+  endif()
+endfunction()
+
 FetchContent_Declare(
   nanogui
   GIT_REPOSITORY https://github.com/wjakob/nanogui.git
@@ -70,20 +113,15 @@ FetchContent_Declare(
   GIT_TAG        master
 )
 
-FetchContent_MakeAvailable(nanogui pss pcg32 dset)
-
-# Suppress warnings in third-party targets
-if (NOT MSVC)
-  if (TARGET glfw)
-    target_compile_options(glfw PRIVATE -Wno-objc-multiple-method-names -Wno-deprecated-declarations)
-  endif()
-  if (TARGET nanogui-obj)
-    target_compile_options(nanogui-obj PRIVATE -Wno-deprecated-declarations)
-  endif()
-  if (TARGET nanogui)
-    target_compile_options(nanogui PRIVATE -Wno-deprecated-declarations)
-  endif()
+# Populate and patch nanogui before making it available
+FetchContent_GetProperties(nanogui)
+if(NOT nanogui_POPULATED)
+  FetchContent_Populate(nanogui)
+  patch_nanogui()
+  add_subdirectory(${nanogui_SOURCE_DIR} ${nanogui_BINARY_DIR})
 endif()
+
+FetchContent_MakeAvailable(pss pcg32 dset)
 
 # IDE Folders
 if(CMAKE_GENERATOR MATCHES "Visual Studio")
@@ -102,7 +140,12 @@ if(MSVC)
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
-set_property(TARGET nanogui glfw PROPERTY FOLDER "dependencies")
+if (TARGET nanogui)
+  set_property(TARGET nanogui PROPERTY FOLDER "dependencies")
+endif()
+if (TARGET glfw)
+  set_property(TARGET glfw PROPERTY FOLDER "dependencies")
+endif()
 
 # Resource generation
 set(PNG_FILES
@@ -279,4 +322,22 @@ endif()
 option(BUILD_TESTS "Build test suite" ON)
 if(BUILD_TESTS)
   add_subdirectory(tests)
+endif()
+
+# Final pass to suppress warnings in all third-party targets
+if (NOT MSVC)
+  set(THIRD_PARTY_WARNING_FLAGS 
+    -Wno-deprecated-declarations 
+    -Wno-deprecated-literal-operator 
+    -Wno-objc-multiple-method-names
+    -Wno-unused-parameter
+    -Wno-unused-variable
+    -Wno-unused-function
+    -Wno-unused-but-set-variable
+  )
+  foreach(target glfw glfw_objects nanogui nanogui-obj nanobind nanobind-static nanobind-obj)
+    if (TARGET ${target})
+      target_compile_options(${target} PRIVATE ${THIRD_PARTY_WARNING_FLAGS})
+    endif()
+  endforeach()
 endif()
