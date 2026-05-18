@@ -17,8 +17,9 @@
 #include <tbb/global_control.h>
 #include "serializer.h"
 
+#include "dedge.h"
+
 static const Float sqrt_3_over_4 = 0.866025403784439f;
-static const uint32_t INVALID = (uint32_t) -1;
 
 Vector3f rotate180(const Vector3f &q, const Vector3f &/* unused */) {
     return -q;

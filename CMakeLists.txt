@@ -93,30 +93,35 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/wjakob/nanogui.git
   GIT_TAG        master
   GIT_SUBMODULES_RECURSE YES
+  GIT_SHALLOW    YES
 )
 
 FetchContent_Declare(
   pss
   GIT_REPOSITORY https://github.com/wjakob/pss.git
   GIT_TAG        master
+  GIT_SHALLOW    YES
 )
 
 FetchContent_Declare(
   pcg32
   GIT_REPOSITORY https://github.com/wjakob/pcg32.git
   GIT_TAG        master
+  GIT_SHALLOW    YES
 )
 
 FetchContent_Declare(
   dset
   GIT_REPOSITORY https://github.com/wjakob/dset.git
   GIT_TAG        master
+  GIT_SHALLOW    YES
 )
 
 FetchContent_Declare(
   argparse
   GIT_REPOSITORY https://github.com/p-ranav/argparse.git
   GIT_TAG        v3.1
+  GIT_SHALLOW    YES
 )
 
 # Populate and patch nanogui before making it available
@@ -128,6 +133,12 @@ if(NOT nanogui_POPULATED)
 endif()
 
 FetchContent_MakeAvailable(pss pcg32 dset argparse)
+
+# Define extra includes for nanogui if they weren't set by its project
+set(NANOGUI_EXTRA_INCS
+    ${nanogui_SOURCE_DIR}/ext/glfw/include
+    ${nanogui_SOURCE_DIR}/ext/nanovg/src
+)
 
 # IDE Folders
 if(CMAKE_GENERATOR MATCHES "Visual Studio")
@@ -227,6 +238,7 @@ set(CORE_SOURCES
 add_library(imesh_core STATIC ${CORE_SOURCES})
 target_include_directories(imesh_core SYSTEM PUBLIC
   ${nanogui_SOURCE_DIR}/include
+  ${NANOGUI_EXTRA_INCS}
 )
 target_include_directories(imesh_core PUBLIC
   src
@@ -258,6 +270,16 @@ add_executable(imesh_vis MACOSX_BUNDLE
   ${EXTRA_SOURCE}
 )
 target_link_libraries(imesh_vis PRIVATE imesh_core nanogui)
+
+if(APPLE)
+  target_link_libraries(imesh_vis PRIVATE
+    "-framework Cocoa"
+    "-framework AppKit"
+    "-framework IOKit"
+    "-framework CoreVideo"
+    "-framework OpenGL"
+  )
+endif()
 
 # CLI executable
 add_executable(imesh_cli
