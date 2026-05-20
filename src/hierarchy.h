@@ -101,7 +101,7 @@ public:
         return (p1-p0).cross(p2-p0).normalized();
     }
 
-    /* Flags which indicate whether the integer variables are froen */
+    /* Flags which indicate whether the integer variables are frozen */
     bool frozenQ() const { return mFrozenQ; }
     bool frozenO() const { return mFrozenO; }
     void setFrozenQ(bool frozen) { mFrozenQ = frozen; }

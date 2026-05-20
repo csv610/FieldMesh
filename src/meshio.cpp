@@ -423,18 +423,7 @@ void load_obj(const std::string &filename, MatrixXu &F, MatrixXf &V,
             line >> p.x() >> p.y() >> p.z();
             positions.push_back(p);
         } else if (prefix == "vt") {
-            /*
-            Vector2f tc;
-            line >> tc.x() >> tc.y();
-            texcoords.push_back(tc);
-            */
         } else if (prefix == "vn") {
-            /*
-            Vector3f n;
-            line >> n.x() >> n.y() >> n.z();
-            normals.push_back(n);
-            */
-        } else if (prefix == "f") {
             std::string v1, v2, v3, v4;
             line >> v1 >> v2 >> v3 >> v4;
             obj_vertex tri[6];

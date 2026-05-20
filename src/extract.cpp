@@ -1,5 +1,5 @@
 /*
-    extract.h: Mesh extraction from existing orientation/position fields
+    extract.cpp: Mesh extraction from existing orientation/position fields
 
     This file is part of the implementation of
 
@@ -281,7 +281,8 @@ extract_graph(const MultiResolutionHierarchy &mRes, bool extrinsic, int rosy, in
                         continue;
                     uint32_t j = it->second;
 
-                    Float weight = std::exp(-(O.col(i)-V.col(i)).squaredNorm() * inv_scale * inv_scale * 9);
+                    Float std_dev_sq = inv_scale * inv_scale;
+                    Float weight = std::exp(-(O.col(i)-V.col(i)).squaredNorm() * std_dev_sq * 9);
                     if (COw.size() != 0 && COw[i] != 0) {
                         tbb::spin_mutex::scoped_lock lock(mutex);
                         crease_out.insert(j);

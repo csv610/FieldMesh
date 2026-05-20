@@ -30,10 +30,11 @@
 #include <mutex>
 #include <thread>
 #include <algorithm>
+#include <cstring>
 
 #define PARALLELIZE
 #define SINGLE_PRECISION
-#define GRAIN_SIZE 1024
+#define GRAIN_SIZE 1024 /* Parallel grain size for TBB blocked_range */
 
 /* Application precision -- can be set to single or double precision */
 #if defined(SINGLE_PRECISION)
@@ -227,8 +228,10 @@ inline float fast_acos(float x) {
 }
 
 template<typename T, typename U> inline T union_cast(const U &val) {
-    union { U u; T t; } tmp = {val};
-    return tmp.t;
+    static_assert(sizeof(T) == sizeof(U), "union_cast requires same size types");
+    T result;
+    std::memcpy(&result, &val, sizeof(T));
+    return result;
 }
 
 inline Float signum(Float value) {
