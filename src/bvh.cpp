@@ -286,8 +286,8 @@ void BVH::build(const ProgressCallback &progress) {
         throw std::runtime_error("BVH Node is not packed! Investigate compiler settings.");
 #endif
 
-    cout << "Constructing Bounding Volume Hierarchy .. ";
-    cout.flush();
+    std::cout << "Constructing Bounding Volume Hierarchy .. ";
+    std::cout.flush();
 
     bool pointcloud = mF->size() == 0;
     uint32_t total_size = pointcloud ? (uint32_t)mV->cols() : (uint32_t)mF->cols();
@@ -302,16 +302,16 @@ void BVH::build(const ProgressCallback &progress) {
 
     std::pair<Float, uint32_t> stats = statistics();
 
-    cout << "done. ("
+    std::cout << "done. ("
          << "SAH cost = " << stats.first << ", "
          << "nodes = " << stats.second << ", "
          << "took " << timeString(timer.reset())
-         << ")" << endl;
+         << ")" << std::endl;
 
-    cout.precision(4);
-    cout << "Compressing BVH node storage to "
+    std::cout.precision(4);
+    std::cout << "Compressing BVH node storage to "
          << 100 * stats.second / (float) mNodes.size() << "% of its original size .. ";
-    cout.flush();
+    std::cout.flush();
 
     std::vector<BVHNode> compressed(stats.second);
     std::vector<uint32_t> skipped_accum(mNodes.size());
@@ -332,11 +332,11 @@ void BVH::build(const ProgressCallback &progress) {
 
     mNodes = std::move(compressed);
 
-    cout << "done. (took " << timeString(timer.value()) << ")" << endl;
+    std::cout << "done. (took " << timeString(timer.value()) << ")" << std::endl;
 
     if (pointcloud) {
-        cout << "Assigning disk radius .. ";
-        cout.flush();
+        std::cout << "Assigning disk radius .. ";
+        std::cout.flush();
 
         auto map = [&](const tbb::blocked_range<uint32_t> &range, double radius_sum) -> double {
             for (uint32_t i = range.begin(); i < range.end(); ++i) {
@@ -357,7 +357,7 @@ void BVH::build(const ProgressCallback &progress) {
         mDiskRadius = (Float) (tbb::parallel_deterministic_reduce(range, 0.0, map, reduce) / (double) range.size());
         mDiskRadius *= 3;
         refitBoundingBoxes();
-        cout << "done. (took " << timeString(timer.value()) << ")" << endl;
+        std::cout << "done. (took " << timeString(timer.value()) << ")" << std::endl;
     }
 
     mProgress = nullptr;
@@ -824,12 +824,12 @@ bool BVH::rayIntersectDisk(const Ray &ray, uint32_t i, Float &t) const {
 }
 
 void BVH::printStatistics() const {
-    cout << endl;
-    cout << "Bounding Volume Hierarchy statistics:" << endl;
-    cout << "    Tree nodes         : " << memString(sizeof(BVHNode) * mNodes.size()) << endl;
-    cout << "    Index buffer       : " << memString(sizeof(uint32_t) * mF->size()) << endl;
-    cout << "    Total              : "
-         << memString(sizeof(BVHNode) * mNodes.size() + sizeof(uint32_t) * mF->size()) << endl;
+    std::cout << std::endl;
+    std::cout << "Bounding Volume Hierarchy statistics:" << std::endl;
+    std::cout << "    Tree nodes         : " << memString(sizeof(BVHNode) * mNodes.size()) << std::endl;
+    std::cout << "    Index buffer       : " << memString(sizeof(uint32_t) * mF->size()) << std::endl;
+    std::cout << "    Total              : "
+         << memString(sizeof(BVHNode) * mNodes.size() + sizeof(uint32_t) * mF->size()) << std::endl;
 }
 
 std::pair<Float, uint32_t> BVH::statistics(uint32_t node_idx) const {

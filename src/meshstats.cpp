@@ -21,8 +21,8 @@ MeshStats compute_mesh_stats(const MatrixXu &F, const MatrixXf &V,
     Timer<> timer;
     MeshStats stats;
     if (F.size() != 0) {
-        cout << "Computing mesh statistics .. ";
-        cout.flush();
+        std::cout << "Computing mesh statistics .. ";
+        std::cout.flush();
         auto map = [&](const tbb::blocked_range<uint32_t> &range, MeshStats stats) -> MeshStats {
             for (uint32_t f = range.begin(); f != range.end(); ++f) {
                 Vector3f v[3] = { V.col(F(0, f)), V.col(F(1, f)), V.col(F(2, f)) };
@@ -67,8 +67,8 @@ MeshStats compute_mesh_stats(const MatrixXu &F, const MatrixXf &V,
         stats.mAverageEdgeLength /= F.cols() * 3;
         stats.mWeightedCenter /= stats.mSurfaceArea;
     } else {
-        cout << "Computing point cloud statistics .. ";
-        cout.flush();
+        std::cout << "Computing point cloud statistics .. ";
+        std::cout.flush();
         auto map = [&](const tbb::blocked_range<uint32_t> &range, MeshStats stats) -> MeshStats {
             for (uint32_t i = range.begin(); i != range.end(); ++i) {
                 const Vector3f &v = V.col(i);
@@ -97,7 +97,7 @@ MeshStats compute_mesh_stats(const MatrixXu &F, const MatrixXf &V,
         stats.mWeightedCenter /= V.cols();
     }
 
-    cout << "done. (took " << timeString(timer.value()) << ")" << endl;
+    std::cout << "done. (took " << timeString(timer.value()) << ")" << std::endl;
 
     return stats;
 }
@@ -108,8 +108,8 @@ void compute_dual_vertex_areas(const MatrixXu &F, const MatrixXf &V,
                                  const ProgressCallback &progress) {
     A.resize(V.cols());
     A.setZero();
-    cout << "Computing dual vertex areas .. ";
-    cout.flush();
+    std::cout << "Computing dual vertex areas .. ";
+    std::cout.flush();
     Timer<> timer;
 
     tbb::parallel_for(
@@ -147,5 +147,5 @@ void compute_dual_vertex_areas(const MatrixXu &F, const MatrixXf &V,
         }
     );
 
-    cout << "done. (took " << timeString(timer.value()) << ")" << endl;
+    std::cout << "done. (took " << timeString(timer.value()) << ")" << std::endl;
 }

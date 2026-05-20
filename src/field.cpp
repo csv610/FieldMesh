@@ -1310,7 +1310,7 @@ compute_position_singularities(const MultiResolutionHierarchy &mRes,
 
 bool move_orientation_singularity(MultiResolutionHierarchy &mRes, uint32_t f_src, uint32_t f_target) {
     int edge_idx[2], found = 0;
-    cout << "Moving orientation singularity from face " << f_src << " to " << f_target << endl;
+    std::cout << "Moving orientation singularity from face " << f_src << " to " << f_target << std::endl;
     const MatrixXu &F = mRes.F();
     const MatrixXf &N = mRes.N(), &Q = mRes.Q();
     AdjacencyMatrix &adj = mRes.adj();
@@ -1332,10 +1332,10 @@ bool move_orientation_singularity(MultiResolutionHierarchy &mRes, uint32_t f_src
 
     index = modulo(index, 4);
     if (index == 0) {
-        cout << "Warning: Starting point was not a singularity!" << endl;
+        std::cout << "Warning: Starting point was not a singularity!" << std::endl;
         return false;
     } else {
-        cout << "Singularity index is " << index << endl;
+        std::cout << "Singularity index is " << index << std::endl;
     }
 
     Link &l0 = search_adjacency(adj, edge_idx[0], edge_idx[1]);
@@ -1360,7 +1360,7 @@ bool move_orientation_singularity(MultiResolutionHierarchy &mRes, uint32_t f_src
 }
 
 bool move_position_singularity(MultiResolutionHierarchy &mRes, uint32_t f_src, uint32_t f_target) {
-    cout << "Moving position singularity from face " << f_src << " to " << f_target << endl;
+    std::cout << "Moving position singularity from face " << f_src << " to " << f_target << std::endl;
     const MatrixXu &F = mRes.F();
     const MatrixXf &N = mRes.N(), &Q = mRes.Q();
     AdjacencyMatrix &adj = mRes.adj();
@@ -1401,13 +1401,13 @@ bool move_position_singularity(MultiResolutionHierarchy &mRes, uint32_t f_src, u
     }
 
     if (index == Vector2i::Zero()) {
-        cout << "Warning: Starting point was not a singularity!" << endl;
+        std::cout << "Warning: Starting point was not a singularity!" << std::endl;
         return false;
     } else if (index.array().abs().sum() != 1) {
-        cout << "Warning: Starting point is a high-degree singularity " << index.transpose() << endl;
+        std::cout << "Warning: Starting point is a high-degree singularity " << index.transpose() << std::endl;
         return false;
     } else {
-        cout << "Singularity index is " << index.transpose() << endl;
+        std::cout << "Singularity index is " << index.transpose() << std::endl;
     }
 
     int index_f[2], found = 0;
@@ -1452,7 +1452,7 @@ bool move_position_singularity(MultiResolutionHierarchy &mRes, uint32_t f_src, u
         index += rshift(l.ivar[1].shift(), modulo(-best[j], 4)) -
                  rshift(l.ivar[0].shift(), modulo(-best[i], 4));
     }
-    cout << "Afterwards = " << index.transpose() << endl;
+    std::cout << "Afterwards = " << index.transpose() << std::endl;
 
     return true;
 }

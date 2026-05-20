@@ -65,11 +65,11 @@ void write_mesh(const std::string &filename, const MatrixXu &F,
 
 void load_ply(const std::string &filename, MatrixXu &F, MatrixXf &V,
               MatrixXf &N, bool pointcloud, const ProgressCallback &progress) {
-    auto message_cb = [](p_ply ply, const char *msg) { cerr << "rply: " << msg << endl; };
+    auto message_cb = [](p_ply ply, const char *msg) { std::cerr << "rply: " << msg << std::endl; };
 
     Timer<> timer;
-    cout << "Loading \"" << filename << "\" .. ";
-    cout.flush();
+    std::cout << "Loading \"" << filename << "\" .. ";
+    std::cout.flush();
 
     p_ply ply = ply_open(filename.c_str(), message_cb, 0, nullptr);
     if (!ply)
@@ -215,21 +215,21 @@ void load_ply(const std::string &filename, MatrixXu &F, MatrixXf &V,
     F.resize(3, indices.size() / 3);
     memcpy(F.data(), indices.data(), sizeof(uint32_t) * indices.size());
 
-    cout << "done. (V=" << vertexCount;
+    std::cout << "done. (V=" << vertexCount;
     if (F.cols() > 0)
-        cout << ", F=" << F.cols();
-    cout << ", took " << timeString(timer.value()) << ")" << endl;
+        std::cout << ", F=" << F.cols();
+    std::cout << ", took " << timeString(timer.value()) << ")" << std::endl;
 }
 
 void write_ply(const std::string &filename, const MatrixXu &F,
                const MatrixXf &V, const MatrixXf &N, const MatrixXf &Nf, const MatrixXf &UV,
                const MatrixXf &C, const ProgressCallback &progress) {
-    auto message_cb = [](p_ply ply, const char *msg) { cerr << "rply: " << msg << endl; };
+    auto message_cb = [](p_ply ply, const char *msg) { std::cerr << "rply: " << msg << std::endl; };
 
     Timer<> timer;
-    cout << "Writing \"" << filename << "\" (V=" << V.cols()
+    std::cout << "Writing \"" << filename << "\" (V=" << V.cols()
          << ", F=" << F.cols() << ") .. ";
-    cout.flush();
+    std::cout.flush();
 
     if (N.size() > 0 && Nf.size() > 0)
         throw std::runtime_error("Please specify either face or vertex normals but not both!");
@@ -347,10 +347,10 @@ void write_ply(const std::string &filename, const MatrixXu &F,
     }
 
     ply_close(ply);
-    cout << "done. (";
+    std::cout << "done. (";
     if (irregular.size() > 0)
-        cout << irregular.size() << " irregular faces, ";
-    cout << "took " << timeString(timer.value()) << ")" << endl;
+        std::cout << irregular.size() << " irregular faces, ";
+    std::cout << "took " << timeString(timer.value()) << ")" << std::endl;
 }
 
 void load_obj(const std::string &filename, MatrixXu &F, MatrixXf &V,
@@ -400,8 +400,8 @@ void load_obj(const std::string &filename, MatrixXu &F, MatrixXf &V,
     std::ifstream is(filename);
     if (is.fail())
         throw std::runtime_error("Unable to open OBJ file \"" + filename + "\"!");
-    cout << "Loading \"" << filename << "\" .. ";
-    cout.flush();
+    std::cout << "Loading \"" << filename << "\" .. ";
+    std::cout.flush();
     Timer<> timer;
 
     std::vector<Vector3f>   positions;
@@ -462,8 +462,8 @@ void load_obj(const std::string &filename, MatrixXu &F, MatrixXf &V,
     for (uint32_t i=0; i<vertices.size(); ++i)
         V.col(i) = positions.at(vertices[i].p-1);
 
-    cout << "done. (V=" << V.cols() << ", F=" << F.cols() << ", took "
-         << timeString(timer.value()) << ")" << endl;
+    std::cout << "done. (V=" << V.cols() << ", F=" << F.cols() << ", took "
+         << timeString(timer.value()) << ")" << std::endl;
 }
 
 void load_pointcloud(const std::string &filename, MatrixXf &V, MatrixXf &N,
@@ -471,7 +471,7 @@ void load_pointcloud(const std::string &filename, MatrixXf &V, MatrixXf &N,
     std::ifstream is(filename);
     if (is.fail())
         throw std::runtime_error("Unable to open ALN file \"" + filename + "\"!");
-    cout.flush();
+    std::cout.flush();
     Timer<> timer;
     std::istringstream line;
 
@@ -553,8 +553,8 @@ void load_pointcloud(const std::string &filename, MatrixXf &V, MatrixXf &N,
             progress("Loading point cloud", i / (Float) (nFiles-1));
     }
 
-    cout << "Point cloud loading finished. (V=" << V.cols() << ", took "
-         << timeString(timer.value()) << ")" << endl;
+    std::cout << "Point cloud loading finished. (V=" << V.cols() << ", took "
+         << timeString(timer.value()) << ")" << std::endl;
 }
 
 void write_obj(const std::string &filename, const MatrixXu &F,
@@ -562,9 +562,9 @@ void write_obj(const std::string &filename, const MatrixXu &F,
                 const MatrixXf &UV, const MatrixXf &C,
                 const ProgressCallback &progress) {
     Timer<> timer;
-    cout << "Writing \"" << filename << "\" (V=" << V.cols()
+    std::cout << "Writing \"" << filename << "\" (V=" << V.cols()
          << ", F=" << F.cols() << ") .. ";
-    cout.flush();
+    std::cout.flush();
     std::ofstream os(filename);
     if (os.fail())
         throw std::runtime_error("Unable to open OBJ file \"" + filename + "\"!");
@@ -572,16 +572,16 @@ void write_obj(const std::string &filename, const MatrixXu &F,
         throw std::runtime_error("Please specify either face or vertex normals but not both!");
 
     for (uint32_t i=0; i<V.cols(); ++i)
-        os << "v " << V(0, i) << " " << V(1, i) << " " << V(2, i) << endl;
+        os << "v " << V(0, i) << " " << V(1, i) << " " << V(2, i) << std::endl;
 
     for (uint32_t i=0; i<N.cols(); ++i)
-        os << "vn " << N(0, i) << " " << N(1, i) << " " << N(2, i) << endl;
+        os << "vn " << N(0, i) << " " << N(1, i) << " " << N(2, i) << std::endl;
 
     for (uint32_t i=0; i<Nf.cols(); ++i)
-        os << "vn " << Nf(0, i) << " " << Nf(1, i) << " " << Nf(2, i) << endl;
+        os << "vn " << Nf(0, i) << " " << Nf(1, i) << " " << Nf(2, i) << std::endl;
 
     for (uint32_t i=0; i<UV.cols(); ++i)
-        os << "vt " << UV(0, i) << " " << UV(1, i) << endl;
+        os << "vt " << UV(0, i) << " " << UV(1, i) << std::endl;
 
     /* Check for irregular faces */
     std::map<uint32_t, std::pair<uint32_t, std::map<uint32_t, uint32_t>>> irregular;
@@ -604,7 +604,7 @@ void write_obj(const std::string &filename, const MatrixXu &F,
                 idx = f + 1;
             os << "//" << idx << " ";
         }
-        os << endl;
+        os << std::endl;
     }
 
     for (auto item : irregular) {
@@ -622,13 +622,13 @@ void write_obj(const std::string &filename, const MatrixXu &F,
             if (v == first || ++i == face.second.size())
                 break;
         }
-        os << endl;
+        os << std::endl;
     }
 
-    cout << "done. (";
+    std::cout << "done. (";
     if (irregular.size() > 0)
-        cout << irregular.size() << " irregular faces, ";
-    cout << "took " << timeString(timer.value()) << ")" << endl;
+        std::cout << irregular.size() << " irregular faces, ";
+    std::cout << "took " << timeString(timer.value()) << ")" << std::endl;
 }
 
 void load_off(const std::string &filename, MatrixXu &F, MatrixXf &V,
@@ -636,8 +636,8 @@ void load_off(const std::string &filename, MatrixXu &F, MatrixXf &V,
     std::ifstream is(filename);
     if (is.fail())
         throw std::runtime_error("Unable to open OFF file \"" + filename + "\"!");
-    cout << "Loading \"" << filename << "\" .. ";
-    cout.flush();
+    std::cout << "Loading \"" << filename << "\" .. ";
+    std::cout.flush();
     Timer<> timer;
 
     std::string head;
@@ -679,8 +679,8 @@ void load_off(const std::string &filename, MatrixXu &F, MatrixXf &V,
     F.resize(3, indices.size()/3);
     memcpy(F.data(), indices.data(), sizeof(uint32_t)*indices.size());
 
-    cout << "done. (V=" << V.cols() << ", F=" << F.cols() << ", took "
-         << timeString(timer.value()) << ")" << endl;
+    std::cout << "done. (V=" << V.cols() << ", F=" << F.cols() << ", took "
+         << timeString(timer.value()) << ")" << std::endl;
 }
 
 void load_stl(const std::string &filename, MatrixXu &F, MatrixXf &V,
@@ -698,8 +698,8 @@ void load_stl(const std::string &filename, MatrixXu &F, MatrixXf &V,
     uint32_t nTriangles;
     is.read((char *) &nTriangles, 4);
 
-    cout << "Loading \"" << filename << "\" (Binary STL) .. ";
-    cout.flush();
+    std::cout << "Loading \"" << filename << "\" (Binary STL) .. ";
+    std::cout.flush();
     Timer<> timer;
 
     struct VertexHash {
@@ -747,41 +747,41 @@ void load_stl(const std::string &filename, MatrixXu &F, MatrixXf &V,
     F.resize(3, nTriangles);
     memcpy(F.data(), indices.data(), sizeof(uint32_t)*indices.size());
 
-    cout << "done. (V=" << V.cols() << ", F=" << F.cols() << ", took "
-         << timeString(timer.value()) << ")" << endl;
+    std::cout << "done. (V=" << V.cols() << ", F=" << F.cols() << ", took "
+         << timeString(timer.value()) << ")" << std::endl;
 }
 
 void write_off(const std::string &filename, const MatrixXu &F,
                const MatrixXf &V, const ProgressCallback &progress) {
     Timer<> timer;
-    cout << "Writing \"" << filename << "\" (V=" << V.cols()
+    std::cout << "Writing \"" << filename << "\" (V=" << V.cols()
          << ", F=" << F.cols() << ") .. ";
-    cout.flush();
+    std::cout.flush();
     std::ofstream os(filename);
     if (os.fail())
         throw std::runtime_error("Unable to open OFF file \"" + filename + "\"!");
 
-    os << "OFF" << endl;
-    os << V.cols() << " " << F.cols() << " 0" << endl;
+    os << "OFF" << std::endl;
+    os << V.cols() << " " << F.cols() << " 0" << std::endl;
 
     for (uint32_t i=0; i<V.cols(); ++i)
-        os << V(0, i) << " " << V(1, i) << " " << V(2, i) << endl;
+        os << V(0, i) << " " << V(1, i) << " " << V(2, i) << std::endl;
 
     for (uint32_t i=0; i<F.cols(); ++i) {
         os << F.rows();
         for (uint32_t j=0; j<F.rows(); ++j)
             os << " " << F(j, i);
-        os << endl;
+        os << std::endl;
     }
 
-    cout << "done. (took " << timeString(timer.value()) << ")" << endl;
+    std::cout << "done. (took " << timeString(timer.value()) << ")" << std::endl;
 }
 
 void write_stl(const std::string &filename, const MatrixXu &F,
                const MatrixXf &V, const ProgressCallback &progress) {
     Timer<> timer;
-    cout << "Writing \"" << filename << "\" (Binary STL) .. ";
-    cout.flush();
+    std::cout << "Writing \"" << filename << "\" (Binary STL) .. ";
+    std::cout.flush();
     std::ofstream os(filename, std::ios::binary);
     if (os.fail())
         throw std::runtime_error("Unable to open STL file \"" + filename + "\"!");
@@ -814,5 +814,5 @@ void write_stl(const std::string &filename, const MatrixXu &F,
         }
     }
 
-    cout << "done. (took " << timeString(timer.value()) << ")" << endl;
+    std::cout << "done. (took " << timeString(timer.value()) << ")" << std::endl;
 }

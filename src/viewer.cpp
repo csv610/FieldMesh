@@ -50,8 +50,8 @@ Viewer::Viewer(bool fullscreen, bool deterministic)
         mUseHalfFloats = true;
 
     Timer<> timer;
-    cout << "Compiling shaders .. ";
-    cout.flush();
+    std::cout << "Compiling shaders .. ";
+    std::cout.flush();
 
     /* Initialize shaders for rendering geometry and fields */
     mMeshShader63.define("ROSY", "6");
@@ -134,14 +134,14 @@ Viewer::Viewer(bool fullscreen, bool deterministic)
         (const char *)shader_lines_vert,
         (const char *)shader_lines_frag);
 
-    cout << "done. (took " << timeString(timer.value()) << ")" << endl;
+    std::cout << "done. (took " << timeString(timer.value()) << ")" << std::endl;
 
     auto ctx = nvgContext();
     /* Scan over example files in the 'datasets' directory */
     try {
         mExampleImages = nanogui::loadImageDirectory(ctx, "datasets");
     } catch (const std::runtime_error &e) {
-        cout << "Unable to load image data: " << e.what() << endl;
+        std::cout << "Unable to load image data: " << e.what() << std::endl;
     }
     mExampleImages.insert(mExampleImages.begin(),
                           std::make_pair(nvgImageIcon(ctx, loadmesh), ""));
@@ -655,7 +655,7 @@ Viewer::Viewer(bool fullscreen, bool deterministic)
 
     performLayout(ctx);
 
-    mProgress = std::bind(&Viewer::showProgress, this, _1, _2);
+    mProgress = std::bind(&Viewer::showProgress, this, std::placeholders::_1, std::placeholders::_2);
     mOperationStart = mLastProgressMessage = glfwGetTime();
     resetState();
 }
@@ -716,7 +716,7 @@ bool Viewer::resizeEvent(const Vector2i &size) {
     int nSamples = 4;
 
     if (strstr((const char *)glGetString(GL_VENDOR), "Intel") != nullptr) {
-        cout << "Detected Intel HD Graphics card, disabling MSAA as a precaution .." << endl;
+        std::cout << "Detected Intel HD Graphics card, disabling MSAA as a precaution .." << std::endl;
         nSamples = 1;
     }
 
@@ -893,12 +893,12 @@ bool Viewer::keyboardEvent(int key, int scancode, int event, int modifiers) {
             }
         } else if (key == GLFW_KEY_UP) {
             mCamera.viewAngle -= 1;
-            cout << "fov = " << mCamera.viewAngle << endl;
+            std::cout << "fov = " << mCamera.viewAngle << std::endl;
             repaint();
             return true;
         } else if (key == GLFW_KEY_DOWN) {
             mCamera.viewAngle += 1;
-            cout << "fov = " << mCamera.viewAngle << endl;
+            std::cout << "fov = " << mCamera.viewAngle << std::endl;
             repaint();
             return true;
         } else if (key == '/') {
@@ -918,11 +918,11 @@ bool Viewer::keyboardEvent(int key, int scancode, int event, int modifiers) {
             mSize /= supersampling;
             mFBSize /= supersampling;
             Timer<> timer;
-            cout << "Rendering .. ";
-            cout.flush();
+            std::cout << "Rendering .. ";
+            std::cout.flush();
             while (mNeedsRepaint)
                 drawContents();
-            cout << "done. (took " << timeString(timer.value()) << ")" << endl;
+            std::cout << "done. (took " << timeString(timer.value()) << ")" << std::endl;
             mFBO.downloadTGA("screenshot.tga");
             glViewport(0, 0, mFBSize[0], mFBSize[1]);
             resizeEvent(mSize);
@@ -971,13 +971,13 @@ bool Viewer::keyboardEvent(int key, int scancode, int event, int modifiers) {
             try {
                 loadState("state.ply");
             } catch (const std::exception &ex) {
-                cout << "Could not load current state: "<< ex.what() << endl;
+                std::cout << "Could not load current state: "<< ex.what() << std::endl;
             }
         } else if (key == 'S') {
             try {
                 saveState("state.ply");
             } catch (const std::exception &ex) {
-                cout << "Could not save current state: "<< ex.what() << endl;
+                std::cout << "Could not save current state: "<< ex.what() << std::endl;
             }
         }
     }
@@ -994,7 +994,7 @@ void Viewer::setFloorPosition() {
         return Vector3f((model * v2).head<3>());
     };
 
-    cout << "Computing floor .. " << endl;
+    std::cout << "Computing floor .. " << std::endl;
     AABB aabb;
     for (uint32_t i=0; i<mRes.size(); ++i)
         aabb.expandBy(transform_point(mRes.V().col(i)));
@@ -1198,117 +1198,117 @@ void Viewer::renderMitsuba() {
     std::string envmap = "envmap_desat.exr";
 
     std::ofstream of("scene.xml");
-    of << "<?xml version=\"1.0\"?>" << endl << endl
-       << "<scene version=\"0.5.0\">" << endl
-       << "\t<integrator type=\"path\">" << endl
-       << "\t\t<boolean name=\"hideEmitters\" value=\"true\"/>" << endl
-       << "\t</integrator>" << endl << endl;
+    of << "<?xml version=\"1.0\"?>" << std::endl << std::endl
+       << "<scene version=\"0.5.0\">" << std::endl
+       << "\t<integrator type=\"path\">" << std::endl
+       << "\t\t<boolean name=\"hideEmitters\" value=\"true\"/>" << std::endl
+       << "\t</integrator>" << std::endl << std::endl;
 
     if (mLayers[InputMesh]->checked()) {
-        of << "\t<shape type=\"ply\">" << endl
-           << "\t\t<string name=\"filename\" value=\"scene_input.ply\"/>" << endl
-           << "\t\t<transform name=\"toWorld\">" << endl
-           << "\t\t\t<matrix value=\"" << mat_str(model) << "\"/>" << endl
-           << "\t\t</transform>" << endl
-           << "\t\t<bsdf type=\"roughplastic\">" << endl;
+        of << "\t<shape type=\"ply\">" << std::endl
+           << "\t\t<string name=\"filename\" value=\"scene_input.ply\"/>" << std::endl
+           << "\t\t<transform name=\"toWorld\">" << std::endl
+           << "\t\t\t<matrix value=\"" << mat_str(model) << "\"/>" << std::endl
+           << "\t\t</transform>" << std::endl
+           << "\t\t<bsdf type=\"roughplastic\">" << std::endl;
         if (mVisualizeBox->selectedIndex() == 1) {
-            of << "\t\t\t<texture name=\"diffuseReflectance\" type=\"posyfield\">" << endl
-               << "\t\t\t\t<integer name=\"posy\" value=\"" << posy << "\"/>" << endl
-               << "\t\t\t\t<srgb name=\"interiorColor\" value=\"" << base_color.transpose() << "\"/>" << endl
-               << "\t\t\t\t<srgb name=\"edgeColor0\" value=\"" << edge_color0.transpose() << "\"/>" << endl
-               << "\t\t\t\t<srgb name=\"edgeColor1\" value=\"" << edge_color1.transpose() << "\"/>" << endl
-               << "\t\t\t\t<srgb name=\"edgeColor2\" value=\"" << edge_color2.transpose() << "\"/>" << endl
-               << "\t\t\t</texture>" << endl;
+            of << "\t\t\t<texture name=\"diffuseReflectance\" type=\"posyfield\">" << std::endl
+               << "\t\t\t\t<integer name=\"posy\" value=\"" << posy << "\"/>" << std::endl
+               << "\t\t\t\t<srgb name=\"interiorColor\" value=\"" << base_color.transpose() << "\"/>" << std::endl
+               << "\t\t\t\t<srgb name=\"edgeColor0\" value=\"" << edge_color0.transpose() << "\"/>" << std::endl
+               << "\t\t\t\t<srgb name=\"edgeColor1\" value=\"" << edge_color1.transpose() << "\"/>" << std::endl
+               << "\t\t\t\t<srgb name=\"edgeColor2\" value=\"" << edge_color2.transpose() << "\"/>" << std::endl
+               << "\t\t\t</texture>" << std::endl;
         } else if (mVisualizeBox->selectedIndex() == 2) {
-            of << "\t\t\t<texture name=\"diffuseReflectance\" type=\"vertexcolors\"/>" << endl;
+            of << "\t\t\t<texture name=\"diffuseReflectance\" type=\"vertexcolors\"/>" << std::endl;
         } else if (mLayers[InputMeshWireframe]->checked()) {
-            of << "\t\t\t<texture name=\"diffuseReflectance\" type=\"wireframe\">" << endl
-               << "\t\t\t\t<float name=\"lineWidth\" value=\"" << mMeshStats.mAverageEdgeLength * view_scale / 20.f << "\"/>" << endl
-               << "\t\t\t\t<srgb name=\"interiorColor\" value=\"" << base_color.transpose() << "\"/>" << endl
-               << "\t\t\t\t<srgb name=\"edgeColor\" value=\"" << edge_color0.transpose() << "\"/>" << endl
-               << "\t\t\t</texture>" << endl;
+            of << "\t\t\t<texture name=\"diffuseReflectance\" type=\"wireframe\">" << std::endl
+               << "\t\t\t\t<float name=\"lineWidth\" value=\"" << mMeshStats.mAverageEdgeLength * view_scale / 20.f << "\"/>" << std::endl
+               << "\t\t\t\t<srgb name=\"interiorColor\" value=\"" << base_color.transpose() << "\"/>" << std::endl
+               << "\t\t\t\t<srgb name=\"edgeColor\" value=\"" << edge_color0.transpose() << "\"/>" << std::endl
+               << "\t\t\t</texture>" << std::endl;
         } else {
-            of << "\t\t\t<srgb name=\"diffuseReflectance\" value=\"" << base_color.transpose() << "\"/>" << endl;
+            of << "\t\t\t<srgb name=\"diffuseReflectance\" value=\"" << base_color.transpose() << "\"/>" << std::endl;
         }
-        of << "\t\t</bsdf>" << endl
-           << "\t</shape>" << endl << endl;
+        of << "\t\t</bsdf>" << std::endl
+           << "\t</shape>" << std::endl << std::endl;
     }
 
     if (mLayers[BrushStrokes]->checked()) {
-        of << "\t<shape type=\"ply\">" << endl
-           << "\t\t<string name=\"filename\" value=\"scene_brushstrokes.ply\"/>" << endl
-           << "\t\t<transform name=\"toWorld\">" << endl
-           << "\t\t\t<matrix value=\"" << mat_str(model) << "\"/>" << endl
-           << "\t\t</transform>" << endl
-           << "\t\t<bsdf type=\"roughplastic\">" << endl
-           << "\t\t\t<texture name=\"diffuseReflectance\" type=\"vertexcolors\"/>" << endl
-           << "\t\t</bsdf>" << endl
-           << "\t</shape>" << endl << endl;
+        of << "\t<shape type=\"ply\">" << std::endl
+           << "\t\t<string name=\"filename\" value=\"scene_brushstrokes.ply\"/>" << std::endl
+           << "\t\t<transform name=\"toWorld\">" << std::endl
+           << "\t\t\t<matrix value=\"" << mat_str(model) << "\"/>" << std::endl
+           << "\t\t</transform>" << std::endl
+           << "\t\t<bsdf type=\"roughplastic\">" << std::endl
+           << "\t\t\t<texture name=\"diffuseReflectance\" type=\"vertexcolors\"/>" << std::endl
+           << "\t\t</bsdf>" << std::endl
+           << "\t</shape>" << std::endl << std::endl;
     }
 
     if (mLayers[FlowLines]->checked()) {
         bool dim = mLayers[FlowLines]->checked() && mLayers[BrushStrokes]->checked();
-        of << "\t<shape type=\"ply\">" << endl
-           << "\t\t<string name=\"filename\" value=\"scene_flowlines.ply\"/>" << endl
-           << "\t\t<transform name=\"toWorld\">" << endl
-           << "\t\t\t<matrix value=\"" << mat_str(model) << "\"/>" << endl
-           << "\t\t</transform>" << endl;
+        of << "\t<shape type=\"ply\">" << std::endl
+           << "\t\t<string name=\"filename\" value=\"scene_flowlines.ply\"/>" << std::endl
+           << "\t\t<transform name=\"toWorld\">" << std::endl
+           << "\t\t\t<matrix value=\"" << mat_str(model) << "\"/>" << std::endl
+           << "\t\t</transform>" << std::endl;
 
         if (dim) {
-           of << "\t\t<bsdf type=\"mask\">" << endl
-              << "\t\t\t<spectrum name=\"opacity\" value=\"0.3\"/>" << endl
-              << "\t\t\t<bsdf type=\"roughplastic\">" << endl
-              << "\t\t\t\t<texture name=\"diffuseReflectance\" type=\"vertexcolors\"/>" << endl
-              << "\t\t\t</bsdf>" << endl
-              << "\t\t</bsdf>" << endl;
+           of << "\t\t<bsdf type=\"mask\">" << std::endl
+              << "\t\t\t<spectrum name=\"opacity\" value=\"0.3\"/>" << std::endl
+              << "\t\t\t<bsdf type=\"roughplastic\">" << std::endl
+              << "\t\t\t\t<texture name=\"diffuseReflectance\" type=\"vertexcolors\"/>" << std::endl
+              << "\t\t\t</bsdf>" << std::endl
+              << "\t\t</bsdf>" << std::endl;
         } else {
-           of << "\t\t<bsdf type=\"roughplastic\">" << endl
-              << "\t\t\t<texture name=\"diffuseReflectance\" type=\"vertexcolors\"/>" << endl
-              << "\t\t</bsdf>" << endl;
+           of << "\t\t<bsdf type=\"roughplastic\">" << std::endl
+              << "\t\t\t<texture name=\"diffuseReflectance\" type=\"vertexcolors\"/>" << std::endl
+              << "\t\t</bsdf>" << std::endl;
         }
-        of << "\t</shape>" << endl << endl;
+        of << "\t</shape>" << std::endl << std::endl;
     }
 
     if (mLayers[OutputMesh]->checked() && mF_extracted.size() > 0) {
         envmap = "envmap.exr";
-        of << "\t<shape type=\"ply\">" << endl
-           << "\t\t<string name=\"filename\" value=\"scene_output.ply\"/>" << endl
-           << "\t\t<transform name=\"toWorld\">" << endl
-           << "\t\t\t<matrix value=\"" << mat_str(model) << "\"/>" << endl
-           << "\t\t</transform>" << endl
-           << "\t\t<bsdf type=\"force_twosided\">" << endl
-           << "\t\t\t<bsdf type=\"roughplastic\">" << endl;
+        of << "\t<shape type=\"ply\">" << std::endl
+           << "\t\t<string name=\"filename\" value=\"scene_output.ply\"/>" << std::endl
+           << "\t\t<transform name=\"toWorld\">" << std::endl
+           << "\t\t\t<matrix value=\"" << mat_str(model) << "\"/>" << std::endl
+           << "\t\t</transform>" << std::endl
+           << "\t\t<bsdf type=\"force_twosided\">" << std::endl
+           << "\t\t\t<bsdf type=\"roughplastic\">" << std::endl;
         if (mLayers[OutputMeshWireframe]->checked()) {
             Float lineWidth = mRes.scale() * view_scale / 20.f;
             if (posy == 3)
                 lineWidth *= 2;
-            of << "\t\t\t\t<texture name=\"diffuseReflectance\" type=\"wireframe\">" << endl
-               << "\t\t\t\t\t<float name=\"lineWidth\" value=\"" << lineWidth << "\"/>" << endl
-               << "\t\t\t\t\t<srgb name=\"interiorColor\" value=\"" << finalmesh_color.transpose() << "\"/>" << endl
-               << "\t\t\t\t\t<srgb name=\"edgeColor\" value=\"0 0 0\"/>" << endl
-               << "\t\t\t\t\t<boolean name=\"quads\" value=\"" << (posy == 4 ? "true" : "false") << "\"/>" << endl
-               << "\t\t\t\t</texture>" << endl;
+            of << "\t\t\t\t<texture name=\"diffuseReflectance\" type=\"wireframe\">" << std::endl
+               << "\t\t\t\t\t<float name=\"lineWidth\" value=\"" << lineWidth << "\"/>" << std::endl
+               << "\t\t\t\t\t<srgb name=\"interiorColor\" value=\"" << finalmesh_color.transpose() << "\"/>" << std::endl
+               << "\t\t\t\t\t<srgb name=\"edgeColor\" value=\"0 0 0\"/>" << std::endl
+               << "\t\t\t\t\t<boolean name=\"quads\" value=\"" << (posy == 4 ? "true" : "false") << "\"/>" << std::endl
+               << "\t\t\t\t</texture>" << std::endl;
         } else {
-            of << "\t\t\t\t<srgb name=\"diffuseReflectance\" value=\"" << finalmesh_color.transpose() << "\"/>" << endl;
+            of << "\t\t\t\t<srgb name=\"diffuseReflectance\" value=\"" << finalmesh_color.transpose() << "\"/>" << std::endl;
         }
-        of << "\t\t\t</bsdf>" << endl
-           << "\t\t</bsdf>" << endl
-           << "\t</shape>" << endl;
+        of << "\t\t\t</bsdf>" << std::endl
+           << "\t\t</bsdf>" << std::endl
+           << "\t</shape>" << std::endl;
     }
 
     if (mLayers[OrientationFieldSingularities]->checked()) {
         Float radius = mRes.scale() * 0.4f * view_scale * 0.5f
          * std::pow((Float) 2, mOrientationFieldSingSizeSlider->value() * 4 - 2);
 
-        of << "\t<bsdf type=\"roughplastic\" id=\"red\">" << endl
-           << "\t\t<rgb name=\"diffuseReflectance\" value=\".8 0 0\"/>" << endl
-           << "\t</bsdf>" << endl << endl
-           << "\t<bsdf type=\"roughplastic\" id=\"green\">" << endl
-           << "\t\t<rgb name=\"diffuseReflectance\" value=\"0 .8 0\"/>" << endl
-           << "\t</bsdf>" << endl << endl
-           << "\t<bsdf type=\"roughplastic\" id=\"blue\">" << endl
-           << "\t\t<rgb name=\"diffuseReflectance\" value=\"0 0 .8\"/>" << endl
-           << "\t</bsdf>" << endl << endl;
+        of << "\t<bsdf type=\"roughplastic\" id=\"red\">" << std::endl
+           << "\t\t<rgb name=\"diffuseReflectance\" value=\".8 0 0\"/>" << std::endl
+           << "\t</bsdf>" << std::endl << std::endl
+           << "\t<bsdf type=\"roughplastic\" id=\"green\">" << std::endl
+           << "\t\t<rgb name=\"diffuseReflectance\" value=\"0 .8 0\"/>" << std::endl
+           << "\t</bsdf>" << std::endl << std::endl
+           << "\t<bsdf type=\"roughplastic\" id=\"blue\">" << std::endl
+           << "\t\t<rgb name=\"diffuseReflectance\" value=\"0 0 .8\"/>" << std::endl
+           << "\t</bsdf>" << std::endl << std::endl;
 
         for (auto &sing : mOrientationSingularities) {
             Vector3f p = transform_point(mRes.faceCenter(sing.first));
@@ -1319,12 +1319,12 @@ void Viewer::renderMitsuba() {
             else if (sing.second == (uint32_t) rosy-1)
                 refname = "red";
 
-            of << "\t<shape type=\"sphere\">" << endl
+            of << "\t<shape type=\"sphere\">" << std::endl
                << "\t\t<point name=\"center\" x=\"" << p.x() << "\" y=\"" << p.y()
-               << "\" z=\"" << p.z() << "\"/>" << endl
-               << "\t\t<float name=\"radius\" value=\"" << radius << "\"/>" << endl
-               << "\t\t<ref id=\"" << refname << "\"/>" << endl
-               << "\t</shape>" << endl << endl;
+               << "\" z=\"" << p.z() << "\"/>" << std::endl
+               << "\t\t<float name=\"radius\" value=\"" << radius << "\"/>" << std::endl
+               << "\t\t<ref id=\"" << refname << "\"/>" << std::endl
+               << "\t</shape>" << std::endl << std::endl;
         }
     }
 
@@ -1356,60 +1356,60 @@ void Viewer::renderMitsuba() {
                 dir0 = rot(shift.x() * q, -n);
                 dir1 = shift.y() * q;
             }
-            of << "\t<shape type=\"sphere\" id=\"pos_sing_" << ctr++ << "\">" << endl
+            of << "\t<shape type=\"sphere\" id=\"pos_sing_" << ctr++ << "\">" << std::endl
                << "\t\t<point name=\"center\" x=\"" << p.x() << "\" y=\"" << p.y()
-               << "\" z=\"" << p.z() << "\"/>" << endl
-               << "\t\t<float name=\"radius\" value=\"" << radius << "\"/>" << endl
-               << "\t\t<bsdf type=\"roughplastic\">" << endl
-               << "\t\t\t<texture type=\"posysing\" name=\"diffuseReflectance\">" << endl
-               << "\t\t\t\t<point name=\"position\" x=\"" << p.x() << "\" y=\"" << p.y() << "\" z=\"" << p.z() << "\"/>" << endl
-               << "\t\t\t\t<vector name=\"dir0\" x=\"" << dir0.x() << "\" y=\"" << dir0.y() << "\" z=\"" << dir0.z() << "\"/>" << endl
-               << "\t\t\t\t<vector name=\"dir1\" x=\"" << dir1.x() << "\" y=\"" << dir1.y() << "\" z=\"" << dir1.z() << "\"/>" << endl
-               << "\t\t\t\t<vector name=\"normal\" x=\"" << n.x() << "\" y=\"" << n.y() << "\" z=\"" << n.z() << "\"/>" << endl
-               << "\t\t\t\t<srgb name=\"color\" value=\"" << ((shift.array().abs() <= 1).all() ? yellow : orange).transpose() << "\"/>" << endl
-               << "\t\t\t</texture>" << endl
-               << "\t\t</bsdf>" << endl
-               << "\t</shape>" << endl << endl;
+               << "\" z=\"" << p.z() << "\"/>" << std::endl
+               << "\t\t<float name=\"radius\" value=\"" << radius << "\"/>" << std::endl
+               << "\t\t<bsdf type=\"roughplastic\">" << std::endl
+               << "\t\t\t<texture type=\"posysing\" name=\"diffuseReflectance\">" << std::endl
+               << "\t\t\t\t<point name=\"position\" x=\"" << p.x() << "\" y=\"" << p.y() << "\" z=\"" << p.z() << "\"/>" << std::endl
+               << "\t\t\t\t<vector name=\"dir0\" x=\"" << dir0.x() << "\" y=\"" << dir0.y() << "\" z=\"" << dir0.z() << "\"/>" << std::endl
+               << "\t\t\t\t<vector name=\"dir1\" x=\"" << dir1.x() << "\" y=\"" << dir1.y() << "\" z=\"" << dir1.z() << "\"/>" << std::endl
+               << "\t\t\t\t<vector name=\"normal\" x=\"" << n.x() << "\" y=\"" << n.y() << "\" z=\"" << n.z() << "\"/>" << std::endl
+               << "\t\t\t\t<srgb name=\"color\" value=\"" << ((shift.array().abs() <= 1).all() ? yellow : orange).transpose() << "\"/>" << std::endl
+               << "\t\t\t</texture>" << std::endl
+               << "\t\t</bsdf>" << std::endl
+               << "\t</shape>" << std::endl << std::endl;
         }
     }
 
-    of << "\t<emitter type=\"envmap\">" << endl
-       << "\t\t<string name=\"filename\" value=\"" << envmap << "\"/>" << endl
-       << "\t\t<float name=\"scale\" value=\"1.5\"/>" << endl
-       << "\t\t<transform name=\"toWorld\">" << endl
-       << "\t\t\t<rotate y=\"1\" angle=\"70\"/>" << endl
-       << "\t\t\t<rotate x=\"1\" angle=\"-50\"/>" << endl
-       << "\t\t</transform>" << endl
-       << "\t</emitter>" << endl << endl
-       << "\t<shape type=\"rectangle\" id=\"background\">" << endl
-       << "\t\t<transform name=\"toWorld\">" << endl
-       << "\t\t\t<matrix value=\"" << mat_str(model * mFloor.cast<float>()) << "\"/>" << endl
-       << "\t\t</transform>" << endl
-       << "\t\t<bsdf type=\"diffuse\">" << endl
-       << "\t\t\t<spectrum name=\"reflectance\" value=\"0.7\"/>" << endl
-       << "\t\t</bsdf>" << endl
-       << "\t</shape>" << endl << endl
-       << "\t<sensor type=\"perspective\">" << endl
-       << "\t\t<float name=\"fov\" value=\"" << mCamera.viewAngle << "\"/>" << endl
-       << "\t\t<float name=\"focusDistance\" value=\"" << focusDistance << "\"/>" << endl
-       << "\t\t<string name=\"fovAxis\" value=\"y\"/>" << endl << endl
-       << "\t\t<sampler type=\"halton\">" << endl
-       << "\t\t\t<integer name=\"sampleCount\" value=\"256\"/>" << endl
-       << "\t\t</sampler>" << endl
-       << "\t\t<transform name=\"toWorld\">" << endl
-       << "\t\t\t<scale x=\"-1\" z=\"-1\"/>" << endl
-       << "\t\t\t<matrix value=\"" << mat_str(view.inverse()) << "\"/>" << endl
-       << "\t\t</transform>" << endl
-       << "\t\t<film type=\"ldrfilm\">" << endl
-       << "\t\t\t<string name=\"pixelFormat\" value=\"rgb\"/>" << endl
-       << "\t\t\t<string name=\"fileFormat\" value=\"jpeg\"/>" << endl
-       << "\t\t\t<boolean name=\"banner\" value=\"false\"/>" << endl
-       << "\t\t\t<integer name=\"width\" value=\"" << mSize.x() << "\"/>" << endl
-       << "\t\t\t<integer name=\"height\" value=\"" << mSize.y() << "\"/>" << endl
-       << "\t\t\t<rfilter type=\"mitchell\"/>" << endl
-       << "\t\t</film>" << endl
-       << "\t</sensor>" << endl
-       << "</scene>" << endl;
+    of << "\t<emitter type=\"envmap\">" << std::endl
+       << "\t\t<string name=\"filename\" value=\"" << envmap << "\"/>" << std::endl
+       << "\t\t<float name=\"scale\" value=\"1.5\"/>" << std::endl
+       << "\t\t<transform name=\"toWorld\">" << std::endl
+       << "\t\t\t<rotate y=\"1\" angle=\"70\"/>" << std::endl
+       << "\t\t\t<rotate x=\"1\" angle=\"-50\"/>" << std::endl
+       << "\t\t</transform>" << std::endl
+       << "\t</emitter>" << std::endl << std::endl
+       << "\t<shape type=\"rectangle\" id=\"background\">" << std::endl
+       << "\t\t<transform name=\"toWorld\">" << std::endl
+       << "\t\t\t<matrix value=\"" << mat_str(model * mFloor.cast<float>()) << "\"/>" << std::endl
+       << "\t\t</transform>" << std::endl
+       << "\t\t<bsdf type=\"diffuse\">" << std::endl
+       << "\t\t\t<spectrum name=\"reflectance\" value=\"0.7\"/>" << std::endl
+       << "\t\t</bsdf>" << std::endl
+       << "\t</shape>" << std::endl << std::endl
+       << "\t<sensor type=\"perspective\">" << std::endl
+       << "\t\t<float name=\"fov\" value=\"" << mCamera.viewAngle << "\"/>" << std::endl
+       << "\t\t<float name=\"focusDistance\" value=\"" << focusDistance << "\"/>" << std::endl
+       << "\t\t<string name=\"fovAxis\" value=\"y\"/>" << std::endl << std::endl
+       << "\t\t<sampler type=\"halton\">" << std::endl
+       << "\t\t\t<integer name=\"sampleCount\" value=\"256\"/>" << std::endl
+       << "\t\t</sampler>" << std::endl
+       << "\t\t<transform name=\"toWorld\">" << std::endl
+       << "\t\t\t<scale x=\"-1\" z=\"-1\"/>" << std::endl
+       << "\t\t\t<matrix value=\"" << mat_str(view.inverse()) << "\"/>" << std::endl
+       << "\t\t</transform>" << std::endl
+       << "\t\t<film type=\"ldrfilm\">" << std::endl
+       << "\t\t\t<string name=\"pixelFormat\" value=\"rgb\"/>" << std::endl
+       << "\t\t\t<string name=\"fileFormat\" value=\"jpeg\"/>" << std::endl
+       << "\t\t\t<boolean name=\"banner\" value=\"false\"/>" << std::endl
+       << "\t\t\t<integer name=\"width\" value=\"" << mSize.x() << "\"/>" << std::endl
+       << "\t\t\t<integer name=\"height\" value=\"" << mSize.y() << "\"/>" << std::endl
+       << "\t\t\t<rfilter type=\"mitchell\"/>" << std::endl
+       << "\t\t</film>" << std::endl
+       << "\t</sensor>" << std::endl
+       << "</scene>" << std::endl;
 
 #if !defined(_WIN32)
     pid_t pid = fork(); /* Create a child process */
@@ -1510,7 +1510,7 @@ void Viewer::extractMesh() {
                   mF_extracted, posy, mRes.scale(), creaseOut, true,
                   mPureQuadBox->checked(), mBVH, smooth_iterations);
 
-    cout << "Extraction is done. (total time: " << timeString(timer.value()) << ")" << endl;
+    std::cout << "Extraction is done. (total time: " << timeString(timer.value()) << ")" << std::endl;
 
     int fmult = posy == 3 ? 1 : 2;
 
@@ -1587,8 +1587,8 @@ void Viewer::traceFlowLines() {
     MatrixXu8 color(4, nVertices);
     std::vector<tbb::spin_mutex> locks(meshSize * (rosy/2));
     indices.setZero();
-    cout << "Tracing " << nLines << " flow lines ..";
-    cout.flush();
+    std::cout << "Tracing " << nLines << " flow lines ..";
+    std::cout.flush();
     Timer<> timer;
 
     tbb::parallel_for(
@@ -1707,7 +1707,7 @@ void Viewer::traceFlowLines() {
         }
     );
 
-    cout << "done. (took " << timeString(timer.value()) << ")" << endl;
+    std::cout << "done. (took " << timeString(timer.value()) << ")" << std::endl;
     mFlowLineShader.bind();
     mFlowLineShader.uploadAttrib("position", position, version);
     mFlowLineShader.uploadAttrib("color", color, version);
@@ -2018,7 +2018,7 @@ void Viewer::saveState(std::string filename) {
         mOrientationSingularityShader.save(state);
         state.popPrefix();
 
-        //cout << "Writing " << state << endl;
+        //std::cout << "Writing " << state << std::endl;
         mOperationStart = mLastProgressMessage = glfwGetTime();
         mProcessEvents = false;
         glfwMakeContextCurrent(nullptr);
@@ -2051,7 +2051,7 @@ void Viewer::loadState(std::string filename, bool compat) {
         mProgressWindow->setVisible(false);
         mProcessEvents = true;
         glfwMakeContextCurrent(mGLFWWindow);
-        //cout << state << endl;
+        //std::cout << state << std::endl;
 
         /* Gui settings */
         state.get("gui", this);
@@ -3129,8 +3129,8 @@ void Viewer::loadInput(std::string filename, Float creaseAngle, Float scale,
     }
 
     if (scale < 0 && vertex_count < 0 && face_count < 0) {
-        cout << "No target vertex count/face count/scale argument provided. "
-                "Setting to the default of 1/16 * input vertex count." << endl;
+        std::cout << "No target vertex count/face count/scale argument provided. "
+                "Setting to the default of 1/16 * input vertex count." << std::endl;
         vertex_count = V.cols() / 16;
     }
 
@@ -3148,18 +3148,18 @@ void Viewer::loadInput(std::string filename, Float creaseAngle, Float scale,
         scale = posy == 4 ? std::sqrt(face_area) : (2*std::sqrt(face_area * std::sqrt(1.f/3.f)));
     }
 
-    cout << "Output mesh goals (approximate)" << endl;
-    cout << "   Vertex count         = " << vertex_count << endl;
-    cout << "   Face count           = " << face_count << endl;
-    cout << "   Edge length          = " << scale << endl;
+    std::cout << "Output mesh goals (approximate)" << std::endl;
+    std::cout << "   Vertex count         = " << vertex_count << std::endl;
+    std::cout << "   Face count           = " << face_count << std::endl;
+    std::cout << "   Edge length          = " << scale << std::endl;
 
     if (!pointcloud) {
         /* Subdivide the mesh if necessary */
         if (mMeshStats.mMaximumEdgeLength*2 > scale || mMeshStats.mMaximumEdgeLength > mMeshStats.mAverageEdgeLength * 2) {
             VectorXu V2E, E2E;
-            cout << "Input mesh is too coarse for the desired output edge length "
+            std::cout << "Input mesh is too coarse for the desired output edge length "
                     "(max input mesh edge length=" << mMeshStats.mMaximumEdgeLength
-                 << "), subdividing .." << endl;
+                 << "), subdividing .." << std::endl;
             build_dedge(F, V, V2E, E2E, mBoundaryVertices, mNonmanifoldVertices,
                         mProgress);
             subdivide(F, V, V2E, E2E, mBoundaryVertices,
@@ -3299,8 +3299,8 @@ void Viewer::loadInput(std::string filename, Float creaseAngle, Float scale,
     mMeshShader44.uploadAttrib("uv", O_gpu);
     O_gpu.resize(0, 0);
 
-    cout << endl << "GPU statistics:" << endl;
-    cout << "    Vertex buffers      : " << memString(mMeshShader44.bufferSize()) << endl;
+    std::cout << std::endl << "GPU statistics:" << std::endl;
+    std::cout << "    Vertex buffers      : " << memString(mMeshShader44.bufferSize()) << std::endl;
 
     shareGLBuffers();
 

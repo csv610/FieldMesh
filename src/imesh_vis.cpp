@@ -48,31 +48,31 @@ int main(int argc, char **argv) {
                 /* Ignore for GUI mode */
             } else if (strcmp("--threads", argv[i]) == 0 || strcmp("-t", argv[i]) == 0) {
                 if (++i >= argc) {
-                    cerr << "Missing thread count!" << endl;
+                    std::cerr << "Missing thread count!" << std::endl;
                     return -1;
                 }
                 nprocs = str_to_uint32_t(argv[i]);
             } else if (strcmp("--knn", argv[i]) == 0 || strcmp("-k", argv[i]) == 0) {
                 if (++i >= argc) {
-                    cerr << "Missing knn point count argument!" << endl;
+                    std::cerr << "Missing knn point count argument!" << std::endl;
                     return -1;
                 }
                 knn_points = str_to_uint32_t(argv[i]);
             } else if (strcmp("--crease", argv[i]) == 0 || strcmp("-c", argv[i]) == 0) {
                 if (++i >= argc) {
-                    cerr << "Missing crease angle argument!" << endl;
+                    std::cerr << "Missing crease angle argument!" << std::endl;
                     return -1;
                 }
                 crease_angle = str_to_float(argv[i]);
             } else if (strcmp("--rosy", argv[i]) == 0 || strcmp("-r", argv[i]) == 0) {
                 if (++i >= argc) {
-                    cerr << "Missing rotation symmetry type!" << endl;
+                    std::cerr << "Missing rotation symmetry type!" << std::endl;
                     return -1;
                 }
                 rosy = str_to_int32_t(argv[i]);
             } else if (strcmp("--posy", argv[i]) == 0 || strcmp("-p", argv[i]) == 0) {
                 if (++i >= argc) {
-                    cerr << "Missing position symmetry type!" << endl;
+                    std::cerr << "Missing position symmetry type!" << std::endl;
                     return -1;
                 }
                 posy = str_to_int32_t(argv[i]);
@@ -80,19 +80,19 @@ int main(int argc, char **argv) {
                     posy = 3;
             } else if (strcmp("--scale", argv[i]) == 0 || strcmp("-s", argv[i]) == 0) {
                 if (++i >= argc) {
-                    cerr << "Missing scale argument!" << endl;
+                    std::cerr << "Missing scale argument!" << std::endl;
                     return -1;
                 }
                 scale = str_to_float(argv[i]);
             } else if (strcmp("--faces", argv[i]) == 0 || strcmp("-f", argv[i]) == 0) {
                 if (++i >= argc) {
-                    cerr << "Missing face count argument!" << endl;
+                    std::cerr << "Missing face count argument!" << std::endl;
                     return -1;
                 }
                 face_count = str_to_int32_t(argv[i]);
             } else if (strcmp("--vertices", argv[i]) == 0 || strcmp("-v", argv[i]) == 0) {
                 if (++i >= argc) {
-                    cerr << "Missing vertex count argument!" << endl;
+                    std::cerr << "Missing vertex count argument!" << std::endl;
                     return -1;
                 }
                 vertex_count = str_to_int32_t(argv[i]);
@@ -104,19 +104,19 @@ int main(int argc, char **argv) {
 #endif
             } else {
                 if (strncmp(argv[i], "-", 1) == 0) {
-                    cerr << "Invalid argument: \"" << argv[i] << "\"!" << endl;
+                    std::cerr << "Invalid argument: \"" << argv[i] << "\"!" << std::endl;
                     help = true;
                 }
                 args.push_back(argv[i]);
             }
         }
     } catch (const std::exception &e) {
-        cout << "Error: " << e.what() << endl;
+        std::cout << "Error: " << e.what() << std::endl;
         help = true;
     }
 
     if ((posy != 3 && posy != 4) || (rosy != 2 && rosy != 4 && rosy != 6)) {
-        cerr << "Error: Invalid symmetry type!" << endl;
+        std::cerr << "Error: Invalid symmetry type!" << std::endl;
         help  = true;
     }
 
@@ -126,27 +126,27 @@ int main(int argc, char **argv) {
     nConstraints += vertex_count > 0 ? 1 : 0;
 
     if (nConstraints > 1) {
-        cerr << "Error: Only one of the --scale, --face and --vertices parameters can be used at once!" << endl;
+        std::cerr << "Error: Only one of the --scale, --face and --vertices parameters can be used at once!" << std::endl;
         help = true;
     }
 
     if (args.size() > 1 || help) {
-        cout << "Syntax: " << argv[0] << " [options] [input mesh / point cloud / application state snapshot]" << endl;
-        cout << "Options:" << endl;
-        cout << "   -t, --threads <count>     Number of threads used for parallel computations" << endl;
-        cout << "   -d, --deterministic       Prefer (slower) deterministic algorithms" << endl;
-        cout << "   -c, --crease <degrees>    Dihedral angle threshold for creases" << endl;
-        cout << "   -i, --intrinsic           Intrinsic mode (extrinsic is the default)" << endl;
-        cout << "   -b, --boundaries          Align to boundaries (only applies when the mesh is not closed)" << endl;
-        cout << "   -r, --rosy <number>       Specifies the orientation symmetry type (2, 4, or 6)" << endl;
-        cout << "   -p, --posy <number>       Specifies the position symmetry type (4 or 6)" << endl;
-        cout << "   -s, --scale <scale>       Desired world space length of edges in the output" << endl;
-        cout << "   -f, --faces <count>       Desired face count of the output mesh" << endl;
-        cout << "   -v, --vertices <count>    Desired vertex count of the output mesh" << endl;
-        cout << "   -C, --compat              Compatibility mode to load snapshots from old software versions" << endl;
-        cout << "   -k, --knn <count>         Point cloud mode: number of adjacent points to consider" << endl;
-        cout << "   -F, --fullscreen          Open a full-screen window" << endl;
-        cout << "   -h, --help                Display this message" << endl;
+        std::cout << "Syntax: " << argv[0] << " [options] [input mesh / point cloud / application state snapshot]" << std::endl;
+        std::cout << "Options:" << std::endl;
+        std::cout << "   -t, --threads <count>     Number of threads used for parallel computations" << std::endl;
+        std::cout << "   -d, --deterministic       Prefer (slower) deterministic algorithms" << std::endl;
+        std::cout << "   -c, --crease <degrees>    Dihedral angle threshold for creases" << std::endl;
+        std::cout << "   -i, --intrinsic           Intrinsic mode (extrinsic is the default)" << std::endl;
+        std::cout << "   -b, --boundaries          Align to boundaries (only applies when the mesh is not closed)" << std::endl;
+        std::cout << "   -r, --rosy <number>       Specifies the orientation symmetry type (2, 4, or 6)" << std::endl;
+        std::cout << "   -p, --posy <number>       Specifies the position symmetry type (4 or 6)" << std::endl;
+        std::cout << "   -s, --scale <scale>       Desired world space length of edges in the output" << std::endl;
+        std::cout << "   -f, --faces <count>       Desired face count of the output mesh" << std::endl;
+        std::cout << "   -v, --vertices <count>    Desired vertex count of the output mesh" << std::endl;
+        std::cout << "   -C, --compat              Compatibility mode to load snapshots from old software versions" << std::endl;
+        std::cout << "   -k, --knn <count>         Point cloud mode: number of adjacent points to consider" << std::endl;
+        std::cout << "   -F, --fullscreen          Open a full-screen window" << std::endl;
+        std::cout << "   -h, --help                Display this message" << std::endl;
         return -1;
     }
 
@@ -185,7 +185,7 @@ int main(int argc, char **argv) {
         #if defined(_WIN32)
             MessageBoxA(nullptr, error_msg.c_str(), nullptr, MB_ICONERROR | MB_OK);
         #else
-            std::cerr << error_msg << endl;
+            std::cerr << error_msg << std::endl;
         #endif
         return -1;
     }

@@ -17,8 +17,8 @@ void build_dedge(const MatrixXu &F, const MatrixXf &V, VectorXu &V2E,
                          VectorXu &E2E, VectorXb &boundary, VectorXb &nonManifold,
                          const ProgressCallback &progress, bool quiet) {
     if (!quiet) {
-        cout << "Building a directed edge data structure .. ";
-        cout.flush();
+        std::cout << "Building a directed edge data structure .. ";
+        std::cout.flush();
     }
     Timer<> timer;
 
@@ -144,13 +144,13 @@ void build_dedge(const MatrixXu &F, const MatrixXf &V, VectorXu &V2E,
     );
 
     if (!quiet) {
-        cout << "done. (";
+        std::cout << "done. (";
         if (nonManifoldCounter)
-            cout << nonManifoldCounter << " non-manifold vertices, ";
+            std::cout << nonManifoldCounter << " non-manifold vertices, ";
         if (boundaryCounter)
-            cout << boundaryCounter << " boundary vertices, ";
+            std::cout << boundaryCounter << " boundary vertices, ";
         if (isolatedCounter)
-            cout << isolatedCounter << " isolated vertices, ";
-        cout << "took " << timeString(timer.value()) << ")" << endl;
+            std::cout << isolatedCounter << " isolated vertices, ";
+        std::cout << "took " << timeString(timer.value()) << ")" << std::endl;
     }
 }

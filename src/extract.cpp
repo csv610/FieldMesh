@@ -164,17 +164,17 @@ extract_graph(const MultiResolutionHierarchy &mRes, bool extrinsic, int rosy, in
         };
 
         size_t nEdges = adj[mRes.size()]-adj[0];
-        cout << "Step 1: Classifying " << nEdges << " edges " << (deterministic ? "in parallel " : "") << ".. ";
-        cout.flush();
+        std::cout << "Step 1: Classifying " << nEdges << " edges " << (deterministic ? "in parallel " : "") << ".. ";
+        std::cout.flush();
         tbb::blocked_range<uint32_t> range1(0u, (uint32_t) V.cols(), GRAIN_SIZE);
         if (!deterministic)
             tbb::parallel_for(range1, classify_edges);
         else
             classify_edges(range1);
-        cout << "done. (took " << timeString(timer.reset()) << ")" << endl;
+        std::cout << "done. (took " << timeString(timer.reset()) << ")" << std::endl;
 
-        cout << "Step 2: Collapsing " << collapse_edge_vec.size() << " edges .. ";
-        cout.flush();
+        std::cout << "Step 2: Collapsing " << collapse_edge_vec.size() << " edges .. ";
+        std::cout.flush();
 
         struct WeightedEdgeComparator {
             bool operator()(const WeightedEdge& e1, const WeightedEdge& e2) const { return e1.second < e2.second; }
@@ -191,10 +191,10 @@ extract_graph(const MultiResolutionHierarchy &mRes, bool extrinsic, int rosy, in
             tbb::parallel_for(range2, collapse_edges);
         else
             collapse_edges(range2);
-        cout << "done. (ignored " << nConflicts << " conflicting edges, took " << timeString(timer.reset()) << ")" << endl;
+        std::cout << "done. (ignored " << nConflicts << " conflicting edges, took " << timeString(timer.reset()) << ")" << std::endl;
 
-        cout << "Step 3: Assigning vertices .. ";
-        cout.flush();
+        std::cout << "Step 3: Assigning vertices .. ";
+        std::cout.flush();
 
         uint32_t nVertices = 0;
         std::map<uint32_t, uint32_t> vertex_map;
@@ -230,11 +230,11 @@ extract_graph(const MultiResolutionHierarchy &mRes, bool extrinsic, int rosy, in
             }
         );
 
-        cout << "done. (" << vertex_map.size() << " vertices, took " << timeString(timer.reset()) << ")" << endl;
+        std::cout << "done. (" << vertex_map.size() << " vertices, took " << timeString(timer.reset()) << ")" << std::endl;
 
         if (remove_spurious_vertices) {
-            cout << "Step 3a: Removing spurious vertices .. ";
-            cout.flush();
+            std::cout << "Step 3a: Removing spurious vertices .. ";
+            std::cout.flush();
             uint32_t removed = 0;
             for (uint32_t i=0; i<adj_new.size(); ++i) {
                 if (nCollapses[i] > avg_collapses/10)
@@ -248,11 +248,11 @@ extract_graph(const MultiResolutionHierarchy &mRes, bool extrinsic, int rosy, in
                 adj_new[i].clear();
                 ++removed;
             }
-            cout << "done. (removed " << removed << " vertices, took " << timeString(timer.reset()) << ")" << endl;
+            std::cout << "done. (removed " << removed << " vertices, took " << timeString(timer.reset()) << ")" << std::endl;
         }
 
-        cout << "Step 4: Assigning positions to vertices .. ";
-        cout.flush();
+        std::cout << "Step 4: Assigning positions to vertices .. ";
+        std::cout.flush();
 
         O_new.resize(3, nVertices);
         N_new.resize(3, nVertices);
@@ -303,26 +303,26 @@ extract_graph(const MultiResolutionHierarchy &mRes, bool extrinsic, int rosy, in
 
             for (uint32_t i=0; i<nVertices; ++i) {
                 if (cluster_weight[i] == 0) {
-                    cout << "Warning: vertex " << i << " did not receive any contributions!" << endl;
+                    std::cout << "Warning: vertex " << i << " did not receive any contributions!" << std::endl;
                     continue;
                 }
                 O_new.col(i) /= cluster_weight[i];
                 N_new.col(i).normalize();
             }
 
-            cout << "done. (took " << timeString(timer.reset()) << ")" << endl;
+            std::cout << "done. (took " << timeString(timer.reset()) << ")" << std::endl;
         }
     }
 
     if (remove_unnecessary_edges) {
-        cout << "Step 5: Snapping and removing unnecessary edges .";
-        cout.flush();
+        std::cout << "Step 5: Snapping and removing unnecessary edges .";
+        std::cout.flush();
         bool changed;
         uint32_t nRemoved = 0, nSnapped = 0;
         do {
             changed = false;
-            cout << ".";
-            cout.flush();
+            std::cout << ".";
+            std::cout.flush();
 
             bool changed_inner;
             do {
@@ -490,11 +490,11 @@ extract_graph(const MultiResolutionHierarchy &mRes, bool extrinsic, int rosy, in
                 }
             }
         } while (changed);
-        cout << " done. (snapped " << nSnapped << " vertices, removed " << nRemoved << " edges, took " << timeString(timer.reset()) << ")" << endl;
+        std::cout << " done. (snapped " << nSnapped << " vertices, removed " << nRemoved << " edges, took " << timeString(timer.reset()) << ")" << std::endl;
     }
 
-    cout << "Step 6: Orienting edges .. ";
-    cout.flush();
+    std::cout << "Step 6: Orienting edges .. ";
+    std::cout.flush();
 
     tbb::parallel_for(
         tbb::blocked_range<uint32_t>(0u, (uint32_t) O_new.cols(), GRAIN_SIZE),
@@ -514,7 +514,7 @@ extract_graph(const MultiResolutionHierarchy &mRes, bool extrinsic, int rosy, in
     );
 
 
-    cout << "done. (took " << timeString(timer.reset()) << ")" << endl;
+    std::cout << "done. (took " << timeString(timer.reset()) << ")" << std::endl;
 }
 
 void extract_faces(std::vector<std::vector<TaggedLink> > &adj, MatrixXf &O,
@@ -652,8 +652,8 @@ void extract_faces(std::vector<std::vector<TaggedLink> > &adj, MatrixXf &O,
     Timer<> timer;
 
 
-    cout << "Step 7: Extracting faces .. ";
-    cout.flush();
+    std::cout << "Step 7: Extracting faces .. ";
+    std::cout.flush();
     uint32_t nFaces = 0, nHoles = 0;
     std::vector<std::pair<uint32_t, uint32_t>> result;
     for (uint32_t _deg = 3; _deg <= 8; _deg++) {
@@ -673,11 +673,11 @@ void extract_faces(std::vector<std::vector<TaggedLink> > &adj, MatrixXf &O,
             }
         }
     }
-    cout << "done. (" << nFaces << " faces, took " << timeString(timer.reset()) << ")" << endl;
+    std::cout << "done. (" << nFaces << " faces, took " << timeString(timer.reset()) << ")" << std::endl;
 
     if (fill_holes) {
-        cout << "Step 8: Filling holes .. ";
-        cout.flush();
+        std::cout << "Step 8: Filling holes .. ";
+        std::cout.flush();
         for (uint32_t i=0; i<nV_old; ++i) {
             for (uint32_t j=0; j<adj[i].size(); ++j) {
                 if (!adj[i][j].used()) {
@@ -694,7 +694,7 @@ void extract_faces(std::vector<std::vector<TaggedLink> > &adj, MatrixXf &O,
                         }
                     }
                     if (!found)
-                        cout << "Internal error" << endl;
+                        std::cout << "Internal error" << std::endl;
                 }
             }
         }
@@ -709,7 +709,7 @@ void extract_faces(std::vector<std::vector<TaggedLink> > &adj, MatrixXf &O,
                 if (!extract_face(i, j, 0, result))
                     continue;
                 if (result.size() >= 7) {
-                    cout << "Not trying to fill a hole of degree " << result.size() << endl;
+                    std::cout << "Not trying to fill a hole of degree " << result.size() << std::endl;
                     continue;
                 }
                 if (result.size() >= (size_t) stats.size()) {
@@ -724,21 +724,21 @@ void extract_faces(std::vector<std::vector<TaggedLink> > &adj, MatrixXf &O,
                 nHoles++;
             }
         }
-        cout << "done. (" << nHoles << " holes, took " << timeString(timer.reset()) << ")" << endl;
+        std::cout << "done. (" << nHoles << " holes, took " << timeString(timer.reset()) << ")" << std::endl;
     }
 
     {
         bool first = true;
-        cout << "Intermediate mesh statistics: ";
+        std::cout << "Intermediate mesh statistics: ";
         for (int i=0; i<stats.size(); ++i) {
             if (stats[i] == 0)
                 continue;
             if (!first)
-                cout << ", ";
-            cout << "degree "<< i << ": " << stats[i] << (stats[i] == 1 ? " face" : " faces");
+                std::cout << ", ";
+            std::cout << "degree "<< i << ": " << stats[i] << (stats[i] == 1 ? " face" : " faces");
             first = false;
         }
-        cout << endl;
+        std::cout << std::endl;
     }
 
     if (posy == 4 && pure_quad) {
@@ -751,8 +751,8 @@ void extract_faces(std::vector<std::vector<TaggedLink> > &adj, MatrixXf &O,
         E2E_v.resize(E2E.size());
         E2E_v.setConstant((uint32_t) -1);
         uint32_t nF_old = nF;
-        cout << "Step 9: Regular subdivision into pure quad mesh .. ";
-        cout.flush();
+        std::cout << "Step 9: Regular subdivision into pure quad mesh .. ";
+        std::cout.flush();
 
         for (uint32_t i=0; i<nF_old; ++i) {
             Vector4u face = F.col(i);
@@ -860,7 +860,7 @@ void extract_faces(std::vector<std::vector<TaggedLink> > &adj, MatrixXf &O,
             for (uint32_t i=0; i<f.size(); ++i)
                 F.col(f[i]) << ecs[2*i+1], ecs[(2*i+2)%ecs.size()], ecs[(2*i+3)%ecs.size()], idx_fc;
         }
-        cout << "done. (took " << timeString(timer.reset()) << ")" << endl;
+        std::cout << "done. (took " << timeString(timer.reset()) << ")" << std::endl;
     }
 
     F.conservativeResize(posy, nF);
@@ -868,8 +868,8 @@ void extract_faces(std::vector<std::vector<TaggedLink> > &adj, MatrixXf &O,
     O.conservativeResize(3, nV);
 
     if (smooth_iterations > 0) {
-        cout << "Step 10: Running " << smooth_iterations << " smoothing & reprojection steps ..";
-        cout.flush();
+        std::cout << "Step 10: Running " << smooth_iterations << " smoothing & reprojection steps ..";
+        std::cout.flush();
 
         std::vector<std::set<uint32_t>> adj_new(nV);
         std::vector<tbb::spin_mutex> locks(nV);
@@ -910,8 +910,8 @@ void extract_faces(std::vector<std::vector<TaggedLink> > &adj, MatrixXf &O,
         for (int it=0; it<smooth_iterations; ++it) {
             MatrixXf O_prime(O.rows(), O.cols());
             MatrixXf N_prime(O.rows(), O.cols());
-            cout << ".";
-            cout.flush();
+            std::cout << ".";
+            std::cout.flush();
 
             tbb::parallel_for(
                 tbb::blocked_range<uint32_t>(0u, (uint32_t) O.cols(), GRAIN_SIZE),
@@ -955,7 +955,7 @@ void extract_faces(std::vector<std::vector<TaggedLink> > &adj, MatrixXf &O,
             O_prime.swap(O);
             N_prime.swap(N);
         }
-        cout << " done. (took " << timeString(timer.reset()) << ")" << endl;
+        std::cout << " done. (took " << timeString(timer.reset()) << ")" << std::endl;
     }
 
     Nf.resize(3, F.cols());
@@ -999,13 +999,13 @@ void extract_faces(std::vector<std::vector<TaggedLink> > &adj, MatrixXf &O,
     }
 
 #if REMOVE_NONMANIFOLD
-    cout << "Step 11: Removing nonmanifold elements.. ";
+    std::cout << "Step 11: Removing nonmanifold elements.. ";
     remove_nonmanifold(F, O, Nf);
-    cout << "done. (took " << timeString(timer.reset()) << ")" << endl;
+    std::cout << "done. (took " << timeString(timer.reset()) << ")" << std::endl;
 #endif
 
-    cout << "Step 12: Reordering mesh for efficient access .. ";
-    cout.flush();
+    std::cout << "Step 12: Reordering mesh for efficient access .. ";
+    std::cout.flush();
     std::vector<MatrixXf> V_vec(2), F_vec(1);
     V_vec[0].swap(O);
     V_vec[1].swap(N);
@@ -1014,6 +1014,6 @@ void extract_faces(std::vector<std::vector<TaggedLink> > &adj, MatrixXf &O,
     V_vec[0].swap(O);
     V_vec[1].swap(N);
     F_vec[0].swap(Nf);
-    cout << "done. (took " << timeString(timer.value()) << ")" << endl;
+    std::cout << "done. (took " << timeString(timer.value()) << ")" << std::endl;
 
 }

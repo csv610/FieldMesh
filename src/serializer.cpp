@@ -64,12 +64,12 @@ struct CallbackState {
 
 Serializer::Serializer(const std::string &filename, bool compatibilityMode, const ProgressCallback &progress)
     : mCompatibilityMode(compatibilityMode) {
-    auto message_cb = [](p_ply ply, const char *msg) { cerr << "rply: " << msg << endl; };
+    auto message_cb = [](p_ply ply, const char *msg) { std::cerr << "rply: " << msg << std::endl; };
 
     mPrefixStack.push("");
     Timer<> timer;
-    cout << "Unserializing application state from \"" << filename << "\" .. ";
-    cout.flush();
+    std::cout << "Unserializing application state from \"" << filename << "\" .. ";
+    std::cout.flush();
 
     p_ply ply = ply_open(filename.c_str(), message_cb, 0, nullptr);
     if (!ply)
@@ -209,7 +209,7 @@ Serializer::Serializer(const std::string &filename, bool compatibilityMode, cons
     for (auto c : callbackStates)
         delete c;
 
-    cout << "done. (took " << timeString(timer.value()) << ")" << endl;
+    std::cout << "done. (took " << timeString(timer.value()) << ")" << std::endl;
 }
 
 Serializer::~Serializer() {
@@ -232,11 +232,11 @@ Serializer::~Serializer() {
 }
 
 void Serializer::write(const std::string &filename, const ProgressCallback &progress) {
-    auto message_cb = [](p_ply ply, const char *msg) { cerr << "rply: " << msg << endl; };
+    auto message_cb = [](p_ply ply, const char *msg) { std::cerr << "rply: " << msg << std::endl; };
 
     Timer<> timer;
-    cout << "Writing application state to \"" << filename << "\" .. ";
-    cout.flush();
+    std::cout << "Writing application state to \"" << filename << "\" .. ";
+    std::cout.flush();
 
     p_ply ply = ply_create(filename.c_str(), PLY_DEFAULT, message_cb, 0, nullptr);
     if (!ply)
@@ -315,7 +315,7 @@ void Serializer::write(const std::string &filename, const ProgressCallback &prog
     #undef IMPLEMENT
 
     ply_close(ply);
-    cout << "done. (took " << timeString(timer.value()) << ")" << endl;
+    std::cout << "done. (took " << timeString(timer.value()) << ")" << std::endl;
 }
 
 size_t Serializer::totalSize() const {
@@ -359,20 +359,20 @@ bool Serializer::diff(const Serializer &other) const {
     for (const std::string &key : keys) {
         auto it1 = mData.find(key);
         if (it1 == mData.end()) {
-            cout << "Element " << key << " does not exist in serializer 1." << endl;
+            std::cout << "Element " << key << " does not exist in serializer 1." << std::endl;
             diff = true;
             continue;
         }
         auto it2 = other.mData.find(key);
         if (it2 == other.mData.end()) {
-            cout << "Element " << key << " does not exist in serializer 2." << endl;
+            std::cout << "Element " << key << " does not exist in serializer 2." << std::endl;
             diff = true;
             continue;
         }
         const Variant &v1 = it1->second;
         const Variant &v2 = it2->second;
         if (v1.type_id != v2.type_id) {
-            cout << "Element " << key << " have different types." << endl;
+            std::cout << "Element " << key << " have different types." << std::endl;
             diff = true;
             continue;
         }
@@ -404,7 +404,7 @@ bool Serializer::diff(const Serializer &other) const {
         #undef IMPLEMENT
 
         if (result) {
-            cout << "Element " << key << " differs." << endl;
+            std::cout << "Element " << key << " differs." << std::endl;
             diff = true;
         }
     }
@@ -418,9 +418,9 @@ std::ostream &operator<<(std::ostream &os, const Serializer &state) {
     for (auto const &kv : state.mData) {
         const Serializer::Variant &v = kv.second;
         if (!first)
-            cout << ",";
+            std::cout << ",";
         first = false;
-        cout << endl;
+        std::cout << std::endl;
         std::string tname, value;
 
         #define IMPLEMENT(type) \
@@ -461,6 +461,6 @@ std::ostream &operator<<(std::ostream &os, const Serializer &state) {
         }
         os << "\t" << tname << " " << kv.first << " = " << value;
     }
-    os << endl << "]";
+    os << std::endl << "]";
     return os;
 }
